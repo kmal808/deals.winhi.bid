@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+/* Custom CSS variables for theming */
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+}
