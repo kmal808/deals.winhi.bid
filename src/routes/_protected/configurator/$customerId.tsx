@@ -19,7 +19,7 @@ import {
 } from '@/components/configurator/steps'
 import { loadPricingFactors, saveCartToWindows } from '@/server/functions/configurator'
 import { getCustomer } from '@/server/functions/customers'
-import { getSession } from '@/lib/auth'
+import { getSession } from '@/server/functions/auth'
 
 export const Route = createFileRoute('/_protected/configurator/$customerId')({
   loader: async ({ params }) => {

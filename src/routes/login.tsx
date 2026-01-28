@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { getSession, performLogin } from '@/lib/auth'
+import { getSession, performLogin } from '@/server/functions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

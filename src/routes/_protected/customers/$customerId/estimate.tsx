@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download } from 'lucide-react'
 import { EstimateTemplate } from '@/components/pdf/estimate-template'
 import { getCustomer } from '@/server/functions/customers'
-import { getSession } from '@/lib/auth'
+import { getSession } from '@/server/functions/auth'
 
 export const Route = createFileRoute('/_protected/customers/$customerId/estimate')({
   loader: async ({ params }) => {

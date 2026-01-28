@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ArrowLeft, Plus, FileText, FileCheck, Pencil, Save, X, Trash2 } from 'lucide-react'
 import { getCustomer, updateCustomer, deleteCustomer } from '@/server/functions/customers'
-import { getSession } from '@/lib/auth'
+import { getSession } from '@/server/functions/auth'
 import { WindowsTable } from '@/components/windows-table'
 
 export const Route = createFileRoute('/_protected/customers/$customerId')({

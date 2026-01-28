@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate } from '@tanstack/react-router'
-import { getSession, logout, type SessionData } from '@/lib/auth'
+import { getSession, logout, type SessionData } from '@/server/functions/auth'
 import { Button } from '@/components/ui/button'
 import { LogOut, Users, Settings } from 'lucide-react'
 

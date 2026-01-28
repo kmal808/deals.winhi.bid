@@ -1,11 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
-import { db } from '@/lib/db'
-import { windows, customers } from '@/db/schema'
-import { eq, asc } from 'drizzle-orm'
+import { serverOnly$ } from 'vite-env-only/macros'
+import { getDb } from '@/lib/db'
 
 // Get windows for a customer
 export const getWindows = createServerFn().handler(async (ctx: any) => {
   const { customerId, representativeId, role } = ctx?.data || {}
+  const db = await getDb()
+  const { windows, customers } = await serverOnly$(() => import('@/db/schema'))
+  const { eq, asc } = await serverOnly$(() => import('drizzle-orm'))
 
   if (!customerId) {
     throw new Error('Customer ID is required')
@@ -42,6 +44,9 @@ export const getWindows = createServerFn().handler(async (ctx: any) => {
 // Update a single window
 export const updateWindow = createServerFn().handler(async (ctx: any) => {
   const { windowId, data, representativeId, role } = ctx?.data || {}
+  const db = await getDb()
+  const { windows } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
 
   if (!windowId || !data) {
     throw new Error('Window ID and data are required')
@@ -89,6 +94,9 @@ export const updateWindow = createServerFn().handler(async (ctx: any) => {
 // Delete a window
 export const deleteWindow = createServerFn().handler(async (ctx: any) => {
   const { windowId, representativeId, role } = ctx?.data || {}
+  const db = await getDb()
+  const { windows } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
 
   if (!windowId) {
     throw new Error('Window ID is required')
@@ -116,6 +124,9 @@ export const deleteWindow = createServerFn().handler(async (ctx: any) => {
 // Reorder windows
 export const reorderWindows = createServerFn().handler(async (ctx: any) => {
   const { customerId, windowIds, representativeId, role } = ctx?.data || {}
+  const db = await getDb()
+  const { windows, customers } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
 
   if (!customerId || !windowIds?.length) {
     throw new Error('Customer ID and window IDs are required')

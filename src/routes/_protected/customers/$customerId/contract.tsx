@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, FileSignature } from 'lucide-react'
 import { ContractTemplate } from '@/components/pdf/contract-template'
 import { getCustomer } from '@/server/functions/customers'
-import { getSession } from '@/lib/auth'
+import { getSession } from '@/server/functions/auth'
 
 export const Route = createFileRoute('/_protected/customers/$customerId/contract')({
   loader: async ({ params }) => {

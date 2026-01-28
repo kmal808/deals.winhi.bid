@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table'
 import { Plus, Search, Eye, FileText, FileCheck } from 'lucide-react'
 import { listCustomers } from '@/server/functions/customers'
-import { getSession } from '@/lib/auth'
+import { getSession } from '@/server/functions/auth'
 
 interface Customer {
   id: number

@@ -1,13 +1,15 @@
 import { createServerFn } from '@tanstack/react-start'
-import { db } from '@/lib/db'
-import { customers, contractDisclaimers, disclaimers } from '@/db/schema'
-import { eq, like, or, desc, and } from 'drizzle-orm'
+import { serverOnly$ } from 'vite-env-only/macros'
+import { getDb } from '@/lib/db'
 
 // List customers with optional search
 export const listCustomers = createServerFn().handler(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async (ctx: any) => {
     const { search, representativeId, role } = ctx?.data || {}
+    const db = await getDb()
+    const { customers } = await serverOnly$(() => import('@/db/schema'))
+    const { eq, like, or, desc, and } = await serverOnly$(() => import('drizzle-orm'))
 
     const conditions = []
 
@@ -56,6 +58,9 @@ export const getCustomer = createServerFn().handler(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async (ctx: any) => {
     const { customerId, representativeId, role } = ctx?.data || {}
+    const db = await getDb()
+    const { customers } = await serverOnly$(() => import('@/db/schema'))
+    const { eq } = await serverOnly$(() => import('drizzle-orm'))
 
     if (!customerId) {
       throw new Error('Customer ID is required')
@@ -101,6 +106,9 @@ export const createCustomer = createServerFn().handler(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async (ctx: any) => {
     const { data, representativeId } = ctx?.data || {}
+    const db = await getDb()
+    const { customers, contractDisclaimers, disclaimers } = await serverOnly$(() => import('@/db/schema'))
+    const { eq } = await serverOnly$(() => import('drizzle-orm'))
 
     if (!data || !representativeId) {
       throw new Error('Customer data and representative ID are required')
@@ -155,6 +163,9 @@ export const updateCustomer = createServerFn().handler(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async (ctx: any) => {
     const { customerId, data, representativeId, role } = ctx?.data || {}
+    const db = await getDb()
+    const { customers } = await serverOnly$(() => import('@/db/schema'))
+    const { eq } = await serverOnly$(() => import('drizzle-orm'))
 
     if (!customerId || !data) {
       throw new Error('Customer ID and data are required')
@@ -223,6 +234,9 @@ export const deleteCustomer = createServerFn().handler(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async (ctx: any) => {
     const { customerId, representativeId, role } = ctx?.data || {}
+    const db = await getDb()
+    const { customers } = await serverOnly$(() => import('@/db/schema'))
+    const { eq } = await serverOnly$(() => import('drizzle-orm'))
 
     if (!customerId) {
       throw new Error('Customer ID is required')

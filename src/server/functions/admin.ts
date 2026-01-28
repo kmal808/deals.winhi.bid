@@ -1,24 +1,19 @@
 import { createServerFn } from '@tanstack/react-start'
-import { db } from '@/lib/db'
-import {
-  brands,
-  frameTypes,
-  frameColors,
-  glassTypes,
-  gridStyles,
-  gridSizes,
-  productConfigs,
-  disclaimers,
-} from '@/db/schema'
-import { eq, asc } from 'drizzle-orm'
+import { serverOnly$ } from 'vite-env-only/macros'
+import { getDb } from '@/lib/db'
 
 // ============= BRANDS =============
 export const listBrands = createServerFn().handler(async () => {
+  const db = await getDb()
+  const { brands } = await serverOnly$(() => import('@/db/schema'))
+  const { asc } = await serverOnly$(() => import('drizzle-orm'))
   return await db.select().from(brands).orderBy(asc(brands.name))
 })
 
 export const createBrand = createServerFn().handler(async (ctx: any) => {
   const { name, factor } = ctx?.data || {}
+  const db = await getDb()
+  const { brands } = await serverOnly$(() => import('@/db/schema'))
   if (!name?.trim()) throw new Error('Name is required')
 
   const [brand] = await db
@@ -30,6 +25,9 @@ export const createBrand = createServerFn().handler(async (ctx: any) => {
 
 export const updateBrand = createServerFn().handler(async (ctx: any) => {
   const { id, name, factor } = ctx?.data || {}
+  const db = await getDb()
+  const { brands } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
 
   const [brand] = await db
@@ -42,6 +40,9 @@ export const updateBrand = createServerFn().handler(async (ctx: any) => {
 
 export const deleteBrand = createServerFn().handler(async (ctx: any) => {
   const { id } = ctx?.data || {}
+  const db = await getDb()
+  const { brands } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
   await db.delete(brands).where(eq(brands.id, id))
   return { success: true }
@@ -49,11 +50,16 @@ export const deleteBrand = createServerFn().handler(async (ctx: any) => {
 
 // ============= FRAME TYPES =============
 export const listFrameTypes = createServerFn().handler(async () => {
+  const db = await getDb()
+  const { frameTypes } = await serverOnly$(() => import('@/db/schema'))
+  const { asc } = await serverOnly$(() => import('drizzle-orm'))
   return await db.select().from(frameTypes).orderBy(asc(frameTypes.name))
 })
 
 export const createFrameType = createServerFn().handler(async (ctx: any) => {
   const { name, factor } = ctx?.data || {}
+  const db = await getDb()
+  const { frameTypes } = await serverOnly$(() => import('@/db/schema'))
   if (!name?.trim()) throw new Error('Name is required')
 
   const [frameType] = await db
@@ -65,6 +71,9 @@ export const createFrameType = createServerFn().handler(async (ctx: any) => {
 
 export const updateFrameType = createServerFn().handler(async (ctx: any) => {
   const { id, name, factor } = ctx?.data || {}
+  const db = await getDb()
+  const { frameTypes } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
 
   const [frameType] = await db
@@ -77,6 +86,9 @@ export const updateFrameType = createServerFn().handler(async (ctx: any) => {
 
 export const deleteFrameType = createServerFn().handler(async (ctx: any) => {
   const { id } = ctx?.data || {}
+  const db = await getDb()
+  const { frameTypes } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
   await db.delete(frameTypes).where(eq(frameTypes.id, id))
   return { success: true }
@@ -84,11 +96,16 @@ export const deleteFrameType = createServerFn().handler(async (ctx: any) => {
 
 // ============= FRAME COLORS =============
 export const listFrameColors = createServerFn().handler(async () => {
+  const db = await getDb()
+  const { frameColors } = await serverOnly$(() => import('@/db/schema'))
+  const { asc } = await serverOnly$(() => import('drizzle-orm'))
   return await db.select().from(frameColors).orderBy(asc(frameColors.name))
 })
 
 export const createFrameColor = createServerFn().handler(async (ctx: any) => {
   const { name, hexColor, factor } = ctx?.data || {}
+  const db = await getDb()
+  const { frameColors } = await serverOnly$(() => import('@/db/schema'))
   if (!name?.trim()) throw new Error('Name is required')
 
   const [frameColor] = await db
@@ -104,6 +121,9 @@ export const createFrameColor = createServerFn().handler(async (ctx: any) => {
 
 export const updateFrameColor = createServerFn().handler(async (ctx: any) => {
   const { id, name, hexColor, factor } = ctx?.data || {}
+  const db = await getDb()
+  const { frameColors } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
 
   const [frameColor] = await db
@@ -116,6 +136,9 @@ export const updateFrameColor = createServerFn().handler(async (ctx: any) => {
 
 export const deleteFrameColor = createServerFn().handler(async (ctx: any) => {
   const { id } = ctx?.data || {}
+  const db = await getDb()
+  const { frameColors } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
   await db.delete(frameColors).where(eq(frameColors.id, id))
   return { success: true }
@@ -123,11 +146,16 @@ export const deleteFrameColor = createServerFn().handler(async (ctx: any) => {
 
 // ============= GLASS TYPES =============
 export const listGlassTypes = createServerFn().handler(async () => {
+  const db = await getDb()
+  const { glassTypes } = await serverOnly$(() => import('@/db/schema'))
+  const { asc } = await serverOnly$(() => import('drizzle-orm'))
   return await db.select().from(glassTypes).orderBy(asc(glassTypes.name))
 })
 
 export const createGlassType = createServerFn().handler(async (ctx: any) => {
   const { name, factor, imagePath } = ctx?.data || {}
+  const db = await getDb()
+  const { glassTypes } = await serverOnly$(() => import('@/db/schema'))
   if (!name?.trim()) throw new Error('Name is required')
 
   const [glassType] = await db
@@ -143,6 +171,9 @@ export const createGlassType = createServerFn().handler(async (ctx: any) => {
 
 export const updateGlassType = createServerFn().handler(async (ctx: any) => {
   const { id, name, factor, imagePath } = ctx?.data || {}
+  const db = await getDb()
+  const { glassTypes } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
 
   const [glassType] = await db
@@ -155,6 +186,9 @@ export const updateGlassType = createServerFn().handler(async (ctx: any) => {
 
 export const deleteGlassType = createServerFn().handler(async (ctx: any) => {
   const { id } = ctx?.data || {}
+  const db = await getDb()
+  const { glassTypes } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
   await db.delete(glassTypes).where(eq(glassTypes.id, id))
   return { success: true }
@@ -162,11 +196,16 @@ export const deleteGlassType = createServerFn().handler(async (ctx: any) => {
 
 // ============= GRID STYLES =============
 export const listGridStyles = createServerFn().handler(async () => {
+  const db = await getDb()
+  const { gridStyles } = await serverOnly$(() => import('@/db/schema'))
+  const { asc } = await serverOnly$(() => import('drizzle-orm'))
   return await db.select().from(gridStyles).orderBy(asc(gridStyles.name))
 })
 
 export const createGridStyle = createServerFn().handler(async (ctx: any) => {
   const { name, factor, imagePath } = ctx?.data || {}
+  const db = await getDb()
+  const { gridStyles } = await serverOnly$(() => import('@/db/schema'))
   if (!name?.trim()) throw new Error('Name is required')
 
   const [gridStyle] = await db
@@ -182,6 +221,9 @@ export const createGridStyle = createServerFn().handler(async (ctx: any) => {
 
 export const updateGridStyle = createServerFn().handler(async (ctx: any) => {
   const { id, name, factor, imagePath } = ctx?.data || {}
+  const db = await getDb()
+  const { gridStyles } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
 
   const [gridStyle] = await db
@@ -194,6 +236,9 @@ export const updateGridStyle = createServerFn().handler(async (ctx: any) => {
 
 export const deleteGridStyle = createServerFn().handler(async (ctx: any) => {
   const { id } = ctx?.data || {}
+  const db = await getDb()
+  const { gridStyles } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
   await db.delete(gridStyles).where(eq(gridStyles.id, id))
   return { success: true }
@@ -201,11 +246,16 @@ export const deleteGridStyle = createServerFn().handler(async (ctx: any) => {
 
 // ============= GRID SIZES =============
 export const listGridSizes = createServerFn().handler(async () => {
+  const db = await getDb()
+  const { gridSizes } = await serverOnly$(() => import('@/db/schema'))
+  const { asc } = await serverOnly$(() => import('drizzle-orm'))
   return await db.select().from(gridSizes).orderBy(asc(gridSizes.size))
 })
 
 export const createGridSize = createServerFn().handler(async (ctx: any) => {
   const { size } = ctx?.data || {}
+  const db = await getDb()
+  const { gridSizes } = await serverOnly$(() => import('@/db/schema'))
   if (!size?.trim()) throw new Error('Size is required')
 
   const [gridSize] = await db
@@ -217,6 +267,9 @@ export const createGridSize = createServerFn().handler(async (ctx: any) => {
 
 export const updateGridSize = createServerFn().handler(async (ctx: any) => {
   const { id, size } = ctx?.data || {}
+  const db = await getDb()
+  const { gridSizes } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
 
   const [gridSize] = await db
@@ -229,6 +282,9 @@ export const updateGridSize = createServerFn().handler(async (ctx: any) => {
 
 export const deleteGridSize = createServerFn().handler(async (ctx: any) => {
   const { id } = ctx?.data || {}
+  const db = await getDb()
+  const { gridSizes } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
   await db.delete(gridSizes).where(eq(gridSizes.id, id))
   return { success: true }
@@ -236,11 +292,16 @@ export const deleteGridSize = createServerFn().handler(async (ctx: any) => {
 
 // ============= PRODUCT CONFIGS =============
 export const listProductConfigs = createServerFn().handler(async () => {
+  const db = await getDb()
+  const { productConfigs } = await serverOnly$(() => import('@/db/schema'))
+  const { asc } = await serverOnly$(() => import('drizzle-orm'))
   return await db.select().from(productConfigs).orderBy(asc(productConfigs.category), asc(productConfigs.name))
 })
 
 export const createProductConfig = createServerFn().handler(async (ctx: any) => {
   const { name, category, operationType, liteCount, imagePath, svgTemplate } = ctx?.data || {}
+  const db = await getDb()
+  const { productConfigs } = await serverOnly$(() => import('@/db/schema'))
   if (!name?.trim()) throw new Error('Name is required')
   if (!category?.trim()) throw new Error('Category is required')
 
@@ -260,6 +321,9 @@ export const createProductConfig = createServerFn().handler(async (ctx: any) => 
 
 export const updateProductConfig = createServerFn().handler(async (ctx: any) => {
   const { id, name, category, operationType, liteCount, imagePath, svgTemplate } = ctx?.data || {}
+  const db = await getDb()
+  const { productConfigs } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
 
   const [productConfig] = await db
@@ -279,6 +343,9 @@ export const updateProductConfig = createServerFn().handler(async (ctx: any) => 
 
 export const deleteProductConfig = createServerFn().handler(async (ctx: any) => {
   const { id } = ctx?.data || {}
+  const db = await getDb()
+  const { productConfigs } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
   await db.delete(productConfigs).where(eq(productConfigs.id, id))
   return { success: true }
@@ -286,11 +353,16 @@ export const deleteProductConfig = createServerFn().handler(async (ctx: any) => 
 
 // ============= DISCLAIMERS =============
 export const listDisclaimers = createServerFn().handler(async () => {
+  const db = await getDb()
+  const { disclaimers } = await serverOnly$(() => import('@/db/schema'))
+  const { asc } = await serverOnly$(() => import('drizzle-orm'))
   return await db.select().from(disclaimers).orderBy(asc(disclaimers.sortOrder))
 })
 
 export const createDisclaimer = createServerFn().handler(async (ctx: any) => {
   const { description, sortOrder, includeByDefault } = ctx?.data || {}
+  const db = await getDb()
+  const { disclaimers } = await serverOnly$(() => import('@/db/schema'))
   if (!description?.trim()) throw new Error('Description is required')
 
   const [disclaimer] = await db
@@ -306,6 +378,9 @@ export const createDisclaimer = createServerFn().handler(async (ctx: any) => {
 
 export const updateDisclaimer = createServerFn().handler(async (ctx: any) => {
   const { id, description, sortOrder, includeByDefault } = ctx?.data || {}
+  const db = await getDb()
+  const { disclaimers } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
 
   const [disclaimer] = await db
@@ -322,6 +397,9 @@ export const updateDisclaimer = createServerFn().handler(async (ctx: any) => {
 
 export const deleteDisclaimer = createServerFn().handler(async (ctx: any) => {
   const { id } = ctx?.data || {}
+  const db = await getDb()
+  const { disclaimers } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
   if (!id) throw new Error('ID is required')
   await db.delete(disclaimers).where(eq(disclaimers.id, id))
   return { success: true }

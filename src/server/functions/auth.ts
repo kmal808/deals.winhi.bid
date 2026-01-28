@@ -1,9 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getRequest, setResponseHeader } from '@tanstack/react-start/server'
+import { serverOnly$ } from 'vite-env-only/macros'
 import bcrypt from 'bcryptjs'
-import { db } from './db'
-import { representatives } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { getDb } from '@/lib/db'
 
 const SESSION_COOKIE = 'wh_session'
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
@@ -30,15 +28,20 @@ function parseCookies(cookieHeader: string | null): Record<string, string> {
   return cookies
 }
 
-function getSessionIdFromRequest(): string | null {
+async function getSessionIdFromRequest(): Promise<string | null> {
+  const { getRequest } = await serverOnly$(() => import('@tanstack/react-start/server'))
   const request = getRequest()
   const cookieHeader = request?.headers?.get('cookie')
   const cookies = parseCookies(cookieHeader)
   return cookies[SESSION_COOKIE] || null
 }
 
-// Server-side login function (not a server function - called from actions)
+// Server-side login function
 export async function performLogin(username: string, password: string) {
+  const db = await getDb()
+  const { representatives } = await serverOnly$(() => import('@/db/schema'))
+  const { eq } = await serverOnly$(() => import('drizzle-orm'))
+
   const user = await db.query.representatives.findFirst({
     where: eq(representatives.username, username),
   })
@@ -64,6 +67,7 @@ export async function performLogin(username: string, password: string) {
   sessions.set(sessionId, sessionData)
 
   // Set cookie via response header
+  const { setResponseHeader } = await serverOnly$(() => import('@tanstack/react-start/server'))
   const cookieValue = `${SESSION_COOKIE}=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`
   setResponseHeader('Set-Cookie', cookieValue)
 
@@ -71,17 +75,18 @@ export async function performLogin(username: string, password: string) {
 }
 
 export const logout = createServerFn().handler(async () => {
-  const sessionId = getSessionIdFromRequest()
+  const sessionId = await getSessionIdFromRequest()
   if (sessionId) {
     sessions.delete(sessionId)
     // Clear cookie
+    const { setResponseHeader } = await serverOnly$(() => import('@tanstack/react-start/server'))
     setResponseHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; Max-Age=0`)
   }
   return { success: true as const }
 })
 
 export const getSession = createServerFn().handler(async (): Promise<SessionData | null> => {
-  const sessionId = getSessionIdFromRequest()
+  const sessionId = await getSessionIdFromRequest()
   if (!sessionId) return null
 
   const session = sessions.get(sessionId)
