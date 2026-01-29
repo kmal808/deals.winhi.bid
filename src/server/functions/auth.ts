@@ -1,7 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
 import { serverOnly$ } from 'vite-env-only/macros'
-import bcrypt from 'bcryptjs'
-import { getDb } from '@/lib/db'
 
 const SESSION_COOKIE = 'wh_session'
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
@@ -28,19 +26,25 @@ function parseCookies(cookieHeader: string | null): Record<string, string> {
   return cookies
 }
 
-async function getSessionIdFromRequest(): Promise<string | null> {
-  const { getRequest } = await serverOnly$(() => import('@tanstack/react-start/server'))
-  const request = getRequest()
+const getSessionIdFromRequest = serverOnly$(async (): Promise<string | null> => {
+  // Import inside function to avoid client bundle
+  const startServer = await import('@tanstack/react-start/server')
+  const request = startServer.getRequest()
   const cookieHeader = request?.headers?.get('cookie')
   const cookies = parseCookies(cookieHeader)
   return cookies[SESSION_COOKIE] || null
-}
+})
 
-// Server-side login function
-export async function performLogin(username: string, password: string) {
+// Server-side login function - internal implementation
+async function performLoginInternal(username: string, password: string) {
+  // Import all server dependencies inside function
+  const bcrypt = await import('bcryptjs')
+  const { getDb } = await import('@/lib/db')
+  const { representatives } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+  const startServer = await import('@tanstack/react-start/server')
+
   const db = await getDb()
-  const { representatives } = await serverOnly$(() => import('@/db/schema'))
-  const { eq } = await serverOnly$(() => import('drizzle-orm'))
 
   const user = await db.query.representatives.findFirst({
     where: eq(representatives.username, username),
@@ -50,7 +54,7 @@ export async function performLogin(username: string, password: string) {
     throw new Error('Invalid credentials')
   }
 
-  const valid = await bcrypt.compare(password, user.passwordHash)
+  const valid = await bcrypt.default.compare(password, user.passwordHash)
   if (!valid) {
     throw new Error('Invalid credentials')
   }
@@ -67,28 +71,38 @@ export async function performLogin(username: string, password: string) {
   sessions.set(sessionId, sessionData)
 
   // Set cookie via response header
-  const { setResponseHeader } = await serverOnly$(() => import('@tanstack/react-start/server'))
   const cookieValue = `${SESSION_COOKIE}=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`
-  setResponseHeader('Set-Cookie', cookieValue)
+  startServer.setResponseHeader('Set-Cookie', cookieValue)
 
   return { success: true as const, user: sessionData }
 }
 
-export const logout = createServerFn().handler(async () => {
+// Export as server function
+export const performLogin = createServerFn({ method: 'POST' })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  .handler(async (ctx: any) => {
+    const { username, password } = ctx?.data || {}
+    if (!username || !password) {
+      throw new Error('Username and password are required')
+    }
+    return performLoginInternal(username, password)
+  })
+
+export const logout = createServerFn().handler(serverOnly$(async () => {
   const sessionId = await getSessionIdFromRequest()
   if (sessionId) {
     sessions.delete(sessionId)
-    // Clear cookie
-    const { setResponseHeader } = await serverOnly$(() => import('@tanstack/react-start/server'))
-    setResponseHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; Max-Age=0`)
+    // Import inside function
+    const startServer = await import('@tanstack/react-start/server')
+    startServer.setResponseHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; Max-Age=0`)
   }
   return { success: true as const }
-})
+}))
 
-export const getSession = createServerFn().handler(async (): Promise<SessionData | null> => {
+export const getSession = createServerFn().handler(serverOnly$(async (): Promise<SessionData | null> => {
   const sessionId = await getSessionIdFromRequest()
   if (!sessionId) return null
 
   const session = sessions.get(sessionId)
   return session || null
-})
+}))
