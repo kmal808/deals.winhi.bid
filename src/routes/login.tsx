@@ -6,28 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { createServerFn } from '@tanstack/react-start'
-
-// Server function for login
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const loginAction = createServerFn().handler(async (ctx: any) => {
-  const { username, password } = ctx.data || ctx || {}
-
-  if (!username || !password) {
-    return { error: 'Username and password are required' }
-  }
-
-  try {
-    await performLogin(username, password)
-    return { success: true }
-  } catch {
-    return { error: 'Invalid username or password' }
-  }
-})
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
-    // Redirect to dashboard if already logged in
     const session = await getSession()
     if (session) {
       throw { redirect: { to: '/customers' } }
@@ -50,17 +31,13 @@ function LoginPage() {
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (loginAction as any)({ data: { username, password } })
-      if (result.error) {
-        toast.error(result.error)
-        setError(result.error)
-      } else {
-        toast.success('Welcome back!')
-        router.navigate({ to: '/customers' })
-      }
-    } catch {
-      toast.error('An error occurred')
-      setError('An error occurred')
+      await (performLogin as any)({ data: { username, password } })
+      toast.success('Welcome back!')
+      router.navigate({ to: '/customers' })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invalid username or password'
+      toast.error(message)
+      setError(message)
     } finally {
       setIsLoading(false)
     }

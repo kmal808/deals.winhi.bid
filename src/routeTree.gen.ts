@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProtectedCustomersRouteImport } from './routes/_protected/customers'
+import { Route as ProtectedCustomersIndexRouteImport } from './routes/_protected/customers/index'
 import { Route as ProtectedAdminIndexRouteImport } from './routes/_protected/admin/index'
 import { Route as ProtectedCustomersNewRouteImport } from './routes/_protected/customers/new'
 import { Route as ProtectedCustomersCustomerIdRouteImport } from './routes/_protected/customers/$customerId'
@@ -46,6 +47,11 @@ const ProtectedCustomersRoute = ProtectedCustomersRouteImport.update({
   id: '/customers',
   path: '/customers',
   getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedCustomersIndexRoute = ProtectedCustomersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProtectedCustomersRoute,
 } as any)
 const ProtectedAdminIndexRoute = ProtectedAdminIndexRouteImport.update({
   id: '/admin/',
@@ -144,13 +150,13 @@ export interface FileRoutesByFullPath {
   '/customers/$customerId': typeof ProtectedCustomersCustomerIdRouteWithChildren
   '/customers/new': typeof ProtectedCustomersNewRoute
   '/admin/': typeof ProtectedAdminIndexRoute
+  '/customers/': typeof ProtectedCustomersIndexRoute
   '/customers/$customerId/contract': typeof ProtectedCustomersCustomerIdContractRoute
   '/customers/$customerId/estimate': typeof ProtectedCustomersCustomerIdEstimateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/customers': typeof ProtectedCustomersRouteWithChildren
   '/admin/brands': typeof ProtectedAdminBrandsRoute
   '/admin/disclaimers': typeof ProtectedAdminDisclaimersRoute
   '/admin/frame-colors': typeof ProtectedAdminFrameColorsRoute
@@ -163,6 +169,7 @@ export interface FileRoutesByTo {
   '/customers/$customerId': typeof ProtectedCustomersCustomerIdRouteWithChildren
   '/customers/new': typeof ProtectedCustomersNewRoute
   '/admin': typeof ProtectedAdminIndexRoute
+  '/customers': typeof ProtectedCustomersIndexRoute
   '/customers/$customerId/contract': typeof ProtectedCustomersCustomerIdContractRoute
   '/customers/$customerId/estimate': typeof ProtectedCustomersCustomerIdEstimateRoute
 }
@@ -184,6 +191,7 @@ export interface FileRoutesById {
   '/_protected/customers/$customerId': typeof ProtectedCustomersCustomerIdRouteWithChildren
   '/_protected/customers/new': typeof ProtectedCustomersNewRoute
   '/_protected/admin/': typeof ProtectedAdminIndexRoute
+  '/_protected/customers/': typeof ProtectedCustomersIndexRoute
   '/_protected/customers/$customerId/contract': typeof ProtectedCustomersCustomerIdContractRoute
   '/_protected/customers/$customerId/estimate': typeof ProtectedCustomersCustomerIdEstimateRoute
 }
@@ -205,13 +213,13 @@ export interface FileRouteTypes {
     | '/customers/$customerId'
     | '/customers/new'
     | '/admin/'
+    | '/customers/'
     | '/customers/$customerId/contract'
     | '/customers/$customerId/estimate'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
-    | '/customers'
     | '/admin/brands'
     | '/admin/disclaimers'
     | '/admin/frame-colors'
@@ -224,6 +232,7 @@ export interface FileRouteTypes {
     | '/customers/$customerId'
     | '/customers/new'
     | '/admin'
+    | '/customers'
     | '/customers/$customerId/contract'
     | '/customers/$customerId/estimate'
   id:
@@ -244,6 +253,7 @@ export interface FileRouteTypes {
     | '/_protected/customers/$customerId'
     | '/_protected/customers/new'
     | '/_protected/admin/'
+    | '/_protected/customers/'
     | '/_protected/customers/$customerId/contract'
     | '/_protected/customers/$customerId/estimate'
   fileRoutesById: FileRoutesById
@@ -283,6 +293,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/customers'
       preLoaderRoute: typeof ProtectedCustomersRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/customers/': {
+      id: '/_protected/customers/'
+      path: '/'
+      fullPath: '/customers/'
+      preLoaderRoute: typeof ProtectedCustomersIndexRouteImport
+      parentRoute: typeof ProtectedCustomersRoute
     }
     '/_protected/admin/': {
       id: '/_protected/admin/'
@@ -406,12 +423,14 @@ const ProtectedCustomersCustomerIdRouteWithChildren =
 interface ProtectedCustomersRouteChildren {
   ProtectedCustomersCustomerIdRoute: typeof ProtectedCustomersCustomerIdRouteWithChildren
   ProtectedCustomersNewRoute: typeof ProtectedCustomersNewRoute
+  ProtectedCustomersIndexRoute: typeof ProtectedCustomersIndexRoute
 }
 
 const ProtectedCustomersRouteChildren: ProtectedCustomersRouteChildren = {
   ProtectedCustomersCustomerIdRoute:
     ProtectedCustomersCustomerIdRouteWithChildren,
   ProtectedCustomersNewRoute: ProtectedCustomersNewRoute,
+  ProtectedCustomersIndexRoute: ProtectedCustomersIndexRoute,
 }
 
 const ProtectedCustomersRouteWithChildren =

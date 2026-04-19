@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { getDb } from '@/lib/db'
 import {
   representatives,
   brands,
@@ -14,6 +14,7 @@ import bcrypt from 'bcryptjs'
 
 async function seed() {
   console.log('Seeding database...')
+  const db = await getDb()
 
   // Create admin user
   const passwordHash = await bcrypt.hash('admin123', 10)
