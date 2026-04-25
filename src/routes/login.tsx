@@ -6,13 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { createServerFn } from '@tanstack/react-start'
-
-// No need for a separate loginAction, we'll use performLogin directly
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
-    // Redirect to dashboard if already logged in
     const session = await getSession()
     if (session) {
       throw { redirect: { to: '/customers' } }
@@ -34,13 +30,14 @@ function LoginPage() {
     setIsLoading(true)
 
     try {
-      await performLogin({ data: { username, password } })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (performLogin as any)({ data: { username, password } })
       toast.success('Welcome back!')
       router.navigate({ to: '/customers' })
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Invalid username or password'
-      toast.error(errorMessage)
-      setError(errorMessage)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invalid username or password'
+      toast.error(message)
+      setError(message)
     } finally {
       setIsLoading(false)
     }

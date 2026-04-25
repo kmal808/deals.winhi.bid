@@ -1,6 +1,4 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
-import * as schema from './schema'
+import { getDb } from '@/lib/db'
 import {
   representatives,
   brands,
@@ -16,10 +14,7 @@ import bcrypt from 'bcryptjs'
 
 async function seed() {
   console.log('Seeding database...')
-
-  const connectionString = process.env.DATABASE_URL!
-  const client = postgres(connectionString)
-  const db = drizzle(client, { schema })
+  const db = await getDb()
 
   // Create admin user
   const passwordHash = await bcrypt.hash('admin123', 10)
@@ -105,7 +100,7 @@ async function seed() {
     { description: 'Lead time for custom orders is typically 4-6 weeks after final measurements.', sortOrder: 4, includeByDefault: true },
   ]).onConflictDoNothing()
 
-  await client.end()
+  
   console.log('Seed complete!')
 }
 

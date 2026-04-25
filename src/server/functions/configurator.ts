@@ -1,5 +1,4 @@
 import { createServerFn } from '@tanstack/react-start'
-import { serverOnly$ } from 'vite-env-only/macros'
 import { getDb } from '@/lib/db'
 
 // Load all pricing factors for the configurator
@@ -13,8 +12,8 @@ export const loadPricingFactors = createServerFn().handler(async () => {
     gridStyles,
     gridSizes,
     productConfigs,
-  } = await serverOnly$(() => import('@/db/schema'))
-  const { asc } = await serverOnly$(() => import('drizzle-orm'))
+  } = await import('@/db/schema')
+  const { asc } = await import('drizzle-orm')
 
   const [
     brandsData,
@@ -49,8 +48,8 @@ export const loadPricingFactors = createServerFn().handler(async () => {
 export const saveCartToWindows = createServerFn().handler(async (ctx: any) => {
   const { customerId, items, representativeId, role } = ctx?.data || {}
   const db = await getDb()
-  const { windows, customers } = await serverOnly$(() => import('@/db/schema'))
-  const { eq, asc } = await serverOnly$(() => import('drizzle-orm'))
+  const { windows, customers } = await import('@/db/schema')
+  const { eq, asc } = await import('drizzle-orm')
 
   if (!customerId || !items?.length) {
     throw new Error('Customer ID and items are required')
