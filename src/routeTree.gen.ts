@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProtectedCustomersRouteImport } from './routes/_protected/customers'
+import { Route as ProtectedAdminRouteImport } from './routes/_protected/admin'
 import { Route as ProtectedCustomersIndexRouteImport } from './routes/_protected/customers/index'
 import { Route as ProtectedAdminIndexRouteImport } from './routes/_protected/admin/index'
 import { Route as ProtectedCustomersNewRouteImport } from './routes/_protected/customers/new'
@@ -26,6 +27,7 @@ import { Route as ProtectedAdminFrameTypesRouteImport } from './routes/_protecte
 import { Route as ProtectedAdminFrameColorsRouteImport } from './routes/_protected/admin/frame-colors'
 import { Route as ProtectedAdminDisclaimersRouteImport } from './routes/_protected/admin/disclaimers'
 import { Route as ProtectedAdminBrandsRouteImport } from './routes/_protected/admin/brands'
+import { Route as ProtectedCustomersCustomerIdIndexRouteImport } from './routes/_protected/customers/$customerId/index'
 import { Route as ProtectedCustomersCustomerIdEstimateRouteImport } from './routes/_protected/customers/$customerId/estimate'
 import { Route as ProtectedCustomersCustomerIdContractRouteImport } from './routes/_protected/customers/$customerId/contract'
 
@@ -48,15 +50,20 @@ const ProtectedCustomersRoute = ProtectedCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ProtectedAdminRoute = ProtectedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedCustomersIndexRoute = ProtectedCustomersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProtectedCustomersRoute,
 } as any)
 const ProtectedAdminIndexRoute = ProtectedAdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
-  getParentRoute: () => ProtectedRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProtectedAdminRoute,
 } as any)
 const ProtectedCustomersNewRoute = ProtectedCustomersNewRouteImport.update({
   id: '/new',
@@ -77,50 +84,56 @@ const ProtectedConfiguratorCustomerIdRoute =
   } as any)
 const ProtectedAdminProductConfigsRoute =
   ProtectedAdminProductConfigsRouteImport.update({
-    id: '/admin/product-configs',
-    path: '/admin/product-configs',
-    getParentRoute: () => ProtectedRoute,
+    id: '/product-configs',
+    path: '/product-configs',
+    getParentRoute: () => ProtectedAdminRoute,
   } as any)
 const ProtectedAdminGridStylesRoute =
   ProtectedAdminGridStylesRouteImport.update({
-    id: '/admin/grid-styles',
-    path: '/admin/grid-styles',
-    getParentRoute: () => ProtectedRoute,
+    id: '/grid-styles',
+    path: '/grid-styles',
+    getParentRoute: () => ProtectedAdminRoute,
   } as any)
 const ProtectedAdminGridSizesRoute = ProtectedAdminGridSizesRouteImport.update({
-  id: '/admin/grid-sizes',
-  path: '/admin/grid-sizes',
-  getParentRoute: () => ProtectedRoute,
+  id: '/grid-sizes',
+  path: '/grid-sizes',
+  getParentRoute: () => ProtectedAdminRoute,
 } as any)
 const ProtectedAdminGlassTypesRoute =
   ProtectedAdminGlassTypesRouteImport.update({
-    id: '/admin/glass-types',
-    path: '/admin/glass-types',
-    getParentRoute: () => ProtectedRoute,
+    id: '/glass-types',
+    path: '/glass-types',
+    getParentRoute: () => ProtectedAdminRoute,
   } as any)
 const ProtectedAdminFrameTypesRoute =
   ProtectedAdminFrameTypesRouteImport.update({
-    id: '/admin/frame-types',
-    path: '/admin/frame-types',
-    getParentRoute: () => ProtectedRoute,
+    id: '/frame-types',
+    path: '/frame-types',
+    getParentRoute: () => ProtectedAdminRoute,
   } as any)
 const ProtectedAdminFrameColorsRoute =
   ProtectedAdminFrameColorsRouteImport.update({
-    id: '/admin/frame-colors',
-    path: '/admin/frame-colors',
-    getParentRoute: () => ProtectedRoute,
+    id: '/frame-colors',
+    path: '/frame-colors',
+    getParentRoute: () => ProtectedAdminRoute,
   } as any)
 const ProtectedAdminDisclaimersRoute =
   ProtectedAdminDisclaimersRouteImport.update({
-    id: '/admin/disclaimers',
-    path: '/admin/disclaimers',
-    getParentRoute: () => ProtectedRoute,
+    id: '/disclaimers',
+    path: '/disclaimers',
+    getParentRoute: () => ProtectedAdminRoute,
   } as any)
 const ProtectedAdminBrandsRoute = ProtectedAdminBrandsRouteImport.update({
-  id: '/admin/brands',
-  path: '/admin/brands',
-  getParentRoute: () => ProtectedRoute,
+  id: '/brands',
+  path: '/brands',
+  getParentRoute: () => ProtectedAdminRoute,
 } as any)
+const ProtectedCustomersCustomerIdIndexRoute =
+  ProtectedCustomersCustomerIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ProtectedCustomersCustomerIdRoute,
+  } as any)
 const ProtectedCustomersCustomerIdEstimateRoute =
   ProtectedCustomersCustomerIdEstimateRouteImport.update({
     id: '/estimate',
@@ -137,6 +150,7 @@ const ProtectedCustomersCustomerIdContractRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/admin': typeof ProtectedAdminRouteWithChildren
   '/customers': typeof ProtectedCustomersRouteWithChildren
   '/admin/brands': typeof ProtectedAdminBrandsRoute
   '/admin/disclaimers': typeof ProtectedAdminDisclaimersRoute
@@ -153,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/customers/': typeof ProtectedCustomersIndexRoute
   '/customers/$customerId/contract': typeof ProtectedCustomersCustomerIdContractRoute
   '/customers/$customerId/estimate': typeof ProtectedCustomersCustomerIdEstimateRoute
+  '/customers/$customerId/': typeof ProtectedCustomersCustomerIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -166,18 +181,19 @@ export interface FileRoutesByTo {
   '/admin/grid-styles': typeof ProtectedAdminGridStylesRoute
   '/admin/product-configs': typeof ProtectedAdminProductConfigsRoute
   '/configurator/$customerId': typeof ProtectedConfiguratorCustomerIdRoute
-  '/customers/$customerId': typeof ProtectedCustomersCustomerIdRouteWithChildren
   '/customers/new': typeof ProtectedCustomersNewRoute
   '/admin': typeof ProtectedAdminIndexRoute
   '/customers': typeof ProtectedCustomersIndexRoute
   '/customers/$customerId/contract': typeof ProtectedCustomersCustomerIdContractRoute
   '/customers/$customerId/estimate': typeof ProtectedCustomersCustomerIdEstimateRoute
+  '/customers/$customerId': typeof ProtectedCustomersCustomerIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_protected': typeof ProtectedRouteWithChildren
   '/login': typeof LoginRoute
+  '/_protected/admin': typeof ProtectedAdminRouteWithChildren
   '/_protected/customers': typeof ProtectedCustomersRouteWithChildren
   '/_protected/admin/brands': typeof ProtectedAdminBrandsRoute
   '/_protected/admin/disclaimers': typeof ProtectedAdminDisclaimersRoute
@@ -194,12 +210,14 @@ export interface FileRoutesById {
   '/_protected/customers/': typeof ProtectedCustomersIndexRoute
   '/_protected/customers/$customerId/contract': typeof ProtectedCustomersCustomerIdContractRoute
   '/_protected/customers/$customerId/estimate': typeof ProtectedCustomersCustomerIdEstimateRoute
+  '/_protected/customers/$customerId/': typeof ProtectedCustomersCustomerIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
+    | '/admin'
     | '/customers'
     | '/admin/brands'
     | '/admin/disclaimers'
@@ -216,6 +234,7 @@ export interface FileRouteTypes {
     | '/customers/'
     | '/customers/$customerId/contract'
     | '/customers/$customerId/estimate'
+    | '/customers/$customerId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -229,17 +248,18 @@ export interface FileRouteTypes {
     | '/admin/grid-styles'
     | '/admin/product-configs'
     | '/configurator/$customerId'
-    | '/customers/$customerId'
     | '/customers/new'
     | '/admin'
     | '/customers'
     | '/customers/$customerId/contract'
     | '/customers/$customerId/estimate'
+    | '/customers/$customerId'
   id:
     | '__root__'
     | '/'
     | '/_protected'
     | '/login'
+    | '/_protected/admin'
     | '/_protected/customers'
     | '/_protected/admin/brands'
     | '/_protected/admin/disclaimers'
@@ -256,6 +276,7 @@ export interface FileRouteTypes {
     | '/_protected/customers/'
     | '/_protected/customers/$customerId/contract'
     | '/_protected/customers/$customerId/estimate'
+    | '/_protected/customers/$customerId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -294,6 +315,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedCustomersRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/admin': {
+      id: '/_protected/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof ProtectedAdminRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/customers/': {
       id: '/_protected/customers/'
       path: '/'
@@ -303,10 +331,10 @@ declare module '@tanstack/react-router' {
     }
     '/_protected/admin/': {
       id: '/_protected/admin/'
-      path: '/admin'
+      path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof ProtectedAdminIndexRouteImport
-      parentRoute: typeof ProtectedRoute
+      parentRoute: typeof ProtectedAdminRoute
     }
     '/_protected/customers/new': {
       id: '/_protected/customers/new'
@@ -331,59 +359,66 @@ declare module '@tanstack/react-router' {
     }
     '/_protected/admin/product-configs': {
       id: '/_protected/admin/product-configs'
-      path: '/admin/product-configs'
+      path: '/product-configs'
       fullPath: '/admin/product-configs'
       preLoaderRoute: typeof ProtectedAdminProductConfigsRouteImport
-      parentRoute: typeof ProtectedRoute
+      parentRoute: typeof ProtectedAdminRoute
     }
     '/_protected/admin/grid-styles': {
       id: '/_protected/admin/grid-styles'
-      path: '/admin/grid-styles'
+      path: '/grid-styles'
       fullPath: '/admin/grid-styles'
       preLoaderRoute: typeof ProtectedAdminGridStylesRouteImport
-      parentRoute: typeof ProtectedRoute
+      parentRoute: typeof ProtectedAdminRoute
     }
     '/_protected/admin/grid-sizes': {
       id: '/_protected/admin/grid-sizes'
-      path: '/admin/grid-sizes'
+      path: '/grid-sizes'
       fullPath: '/admin/grid-sizes'
       preLoaderRoute: typeof ProtectedAdminGridSizesRouteImport
-      parentRoute: typeof ProtectedRoute
+      parentRoute: typeof ProtectedAdminRoute
     }
     '/_protected/admin/glass-types': {
       id: '/_protected/admin/glass-types'
-      path: '/admin/glass-types'
+      path: '/glass-types'
       fullPath: '/admin/glass-types'
       preLoaderRoute: typeof ProtectedAdminGlassTypesRouteImport
-      parentRoute: typeof ProtectedRoute
+      parentRoute: typeof ProtectedAdminRoute
     }
     '/_protected/admin/frame-types': {
       id: '/_protected/admin/frame-types'
-      path: '/admin/frame-types'
+      path: '/frame-types'
       fullPath: '/admin/frame-types'
       preLoaderRoute: typeof ProtectedAdminFrameTypesRouteImport
-      parentRoute: typeof ProtectedRoute
+      parentRoute: typeof ProtectedAdminRoute
     }
     '/_protected/admin/frame-colors': {
       id: '/_protected/admin/frame-colors'
-      path: '/admin/frame-colors'
+      path: '/frame-colors'
       fullPath: '/admin/frame-colors'
       preLoaderRoute: typeof ProtectedAdminFrameColorsRouteImport
-      parentRoute: typeof ProtectedRoute
+      parentRoute: typeof ProtectedAdminRoute
     }
     '/_protected/admin/disclaimers': {
       id: '/_protected/admin/disclaimers'
-      path: '/admin/disclaimers'
+      path: '/disclaimers'
       fullPath: '/admin/disclaimers'
       preLoaderRoute: typeof ProtectedAdminDisclaimersRouteImport
-      parentRoute: typeof ProtectedRoute
+      parentRoute: typeof ProtectedAdminRoute
     }
     '/_protected/admin/brands': {
       id: '/_protected/admin/brands'
-      path: '/admin/brands'
+      path: '/brands'
       fullPath: '/admin/brands'
       preLoaderRoute: typeof ProtectedAdminBrandsRouteImport
-      parentRoute: typeof ProtectedRoute
+      parentRoute: typeof ProtectedAdminRoute
+    }
+    '/_protected/customers/$customerId/': {
+      id: '/_protected/customers/$customerId/'
+      path: '/'
+      fullPath: '/customers/$customerId/'
+      preLoaderRoute: typeof ProtectedCustomersCustomerIdIndexRouteImport
+      parentRoute: typeof ProtectedCustomersCustomerIdRoute
     }
     '/_protected/customers/$customerId/estimate': {
       id: '/_protected/customers/$customerId/estimate'
@@ -402,9 +437,38 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ProtectedAdminRouteChildren {
+  ProtectedAdminBrandsRoute: typeof ProtectedAdminBrandsRoute
+  ProtectedAdminDisclaimersRoute: typeof ProtectedAdminDisclaimersRoute
+  ProtectedAdminFrameColorsRoute: typeof ProtectedAdminFrameColorsRoute
+  ProtectedAdminFrameTypesRoute: typeof ProtectedAdminFrameTypesRoute
+  ProtectedAdminGlassTypesRoute: typeof ProtectedAdminGlassTypesRoute
+  ProtectedAdminGridSizesRoute: typeof ProtectedAdminGridSizesRoute
+  ProtectedAdminGridStylesRoute: typeof ProtectedAdminGridStylesRoute
+  ProtectedAdminProductConfigsRoute: typeof ProtectedAdminProductConfigsRoute
+  ProtectedAdminIndexRoute: typeof ProtectedAdminIndexRoute
+}
+
+const ProtectedAdminRouteChildren: ProtectedAdminRouteChildren = {
+  ProtectedAdminBrandsRoute: ProtectedAdminBrandsRoute,
+  ProtectedAdminDisclaimersRoute: ProtectedAdminDisclaimersRoute,
+  ProtectedAdminFrameColorsRoute: ProtectedAdminFrameColorsRoute,
+  ProtectedAdminFrameTypesRoute: ProtectedAdminFrameTypesRoute,
+  ProtectedAdminGlassTypesRoute: ProtectedAdminGlassTypesRoute,
+  ProtectedAdminGridSizesRoute: ProtectedAdminGridSizesRoute,
+  ProtectedAdminGridStylesRoute: ProtectedAdminGridStylesRoute,
+  ProtectedAdminProductConfigsRoute: ProtectedAdminProductConfigsRoute,
+  ProtectedAdminIndexRoute: ProtectedAdminIndexRoute,
+}
+
+const ProtectedAdminRouteWithChildren = ProtectedAdminRoute._addFileChildren(
+  ProtectedAdminRouteChildren,
+)
+
 interface ProtectedCustomersCustomerIdRouteChildren {
   ProtectedCustomersCustomerIdContractRoute: typeof ProtectedCustomersCustomerIdContractRoute
   ProtectedCustomersCustomerIdEstimateRoute: typeof ProtectedCustomersCustomerIdEstimateRoute
+  ProtectedCustomersCustomerIdIndexRoute: typeof ProtectedCustomersCustomerIdIndexRoute
 }
 
 const ProtectedCustomersCustomerIdRouteChildren: ProtectedCustomersCustomerIdRouteChildren =
@@ -413,6 +477,8 @@ const ProtectedCustomersCustomerIdRouteChildren: ProtectedCustomersCustomerIdRou
       ProtectedCustomersCustomerIdContractRoute,
     ProtectedCustomersCustomerIdEstimateRoute:
       ProtectedCustomersCustomerIdEstimateRoute,
+    ProtectedCustomersCustomerIdIndexRoute:
+      ProtectedCustomersCustomerIdIndexRoute,
   }
 
 const ProtectedCustomersCustomerIdRouteWithChildren =
@@ -437,31 +503,15 @@ const ProtectedCustomersRouteWithChildren =
   ProtectedCustomersRoute._addFileChildren(ProtectedCustomersRouteChildren)
 
 interface ProtectedRouteChildren {
+  ProtectedAdminRoute: typeof ProtectedAdminRouteWithChildren
   ProtectedCustomersRoute: typeof ProtectedCustomersRouteWithChildren
-  ProtectedAdminBrandsRoute: typeof ProtectedAdminBrandsRoute
-  ProtectedAdminDisclaimersRoute: typeof ProtectedAdminDisclaimersRoute
-  ProtectedAdminFrameColorsRoute: typeof ProtectedAdminFrameColorsRoute
-  ProtectedAdminFrameTypesRoute: typeof ProtectedAdminFrameTypesRoute
-  ProtectedAdminGlassTypesRoute: typeof ProtectedAdminGlassTypesRoute
-  ProtectedAdminGridSizesRoute: typeof ProtectedAdminGridSizesRoute
-  ProtectedAdminGridStylesRoute: typeof ProtectedAdminGridStylesRoute
-  ProtectedAdminProductConfigsRoute: typeof ProtectedAdminProductConfigsRoute
   ProtectedConfiguratorCustomerIdRoute: typeof ProtectedConfiguratorCustomerIdRoute
-  ProtectedAdminIndexRoute: typeof ProtectedAdminIndexRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedAdminRoute: ProtectedAdminRouteWithChildren,
   ProtectedCustomersRoute: ProtectedCustomersRouteWithChildren,
-  ProtectedAdminBrandsRoute: ProtectedAdminBrandsRoute,
-  ProtectedAdminDisclaimersRoute: ProtectedAdminDisclaimersRoute,
-  ProtectedAdminFrameColorsRoute: ProtectedAdminFrameColorsRoute,
-  ProtectedAdminFrameTypesRoute: ProtectedAdminFrameTypesRoute,
-  ProtectedAdminGlassTypesRoute: ProtectedAdminGlassTypesRoute,
-  ProtectedAdminGridSizesRoute: ProtectedAdminGridSizesRoute,
-  ProtectedAdminGridStylesRoute: ProtectedAdminGridStylesRoute,
-  ProtectedAdminProductConfigsRoute: ProtectedAdminProductConfigsRoute,
   ProtectedConfiguratorCustomerIdRoute: ProtectedConfiguratorCustomerIdRoute,
-  ProtectedAdminIndexRoute: ProtectedAdminIndexRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(

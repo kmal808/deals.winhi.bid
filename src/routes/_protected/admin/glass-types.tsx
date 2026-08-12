@@ -25,7 +25,7 @@ interface GlassType {
 
 export const Route = createFileRoute('/_protected/admin/glass-types')({
   loader: async () => {
-    const glassTypes = await (listGlassTypes as any)()
+    const glassTypes = await listGlassTypes()
     return { glassTypes }
   },
   component: GlassTypesPage,
@@ -74,7 +74,7 @@ function GlassTypesPage() {
     if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return
 
     try {
-      await (deleteGlassType as any)({ data: { id: item.id } })
+      await deleteGlassType({ data: { id: item.id } })
       window.location.reload()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
@@ -95,9 +95,9 @@ function GlassTypesPage() {
 
     try {
       if (editingItem) {
-        await (updateGlassType as any)({ data: { id: editingItem.id, ...data } })
+        await updateGlassType({ data: { id: editingItem.id, ...data } })
       } else {
-        await (createGlassType as any)({ data })
+        await createGlassType({ data })
       }
       setIsDialogOpen(false)
       window.location.reload()

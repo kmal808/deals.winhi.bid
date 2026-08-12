@@ -21,6 +21,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Pencil, Trash2, GripVertical, DollarSign } from 'lucide-react'
 import { updateWindow, deleteWindow } from '@/server/functions/windows'
+import { lineItemPrice } from '@/lib/pricing'
 
 interface Window {
   id: number
@@ -34,7 +35,7 @@ interface Window {
   brand?: { name: string } | null
   productConfig?: { name: string } | null
   frameType?: { name: string } | null
-  frameColor?: { name: string; hexColor: string } | null
+  frameColor?: { name: string; hexColor: string | null } | null
   glassType?: { name: string } | null
   gridStyle?: { name: string } | null
   gridSize?: { size: string } | null
@@ -42,11 +43,10 @@ interface Window {
 
 interface WindowsTableProps {
   windows: Window[]
-  session: { userId: number; role: string }
   onUpdate: () => void
 }
 
-export function WindowsTable({ windows, session, onUpdate }: WindowsTableProps) {
+export function WindowsTable({ windows, onUpdate }: WindowsTableProps) {
   const [editingWindow, setEditingWindow] = useState<Window | null>(null)
   const [priceWindow, setPriceWindow] = useState<Window | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -55,13 +55,7 @@ export function WindowsTable({ windows, session, onUpdate }: WindowsTableProps) 
     if (!confirm(`Delete "${window.location}"? This cannot be undone.`)) return
 
     try {
-      await (deleteWindow as any)({
-        data: {
-          windowId: window.id,
-          representativeId: session.userId,
-          role: session.role,
-        },
-      })
+      await deleteWindow({ data: { windowId: window.id } })
       toast.success('Window deleted')
       onUpdate()
     } catch (err) {
@@ -77,17 +71,15 @@ export function WindowsTable({ windows, session, onUpdate }: WindowsTableProps) 
     const formData = new FormData(e.currentTarget)
 
     try {
-      await (updateWindow as any)({
+      await updateWindow({
         data: {
           windowId: editingWindow.id,
           data: {
             location: formData.get('location') as string,
             width: formData.get('width') as string,
             height: formData.get('height') as string,
-            specialInstructions: formData.get('specialInstructions') as string,
+            specialInstructions: (formData.get('specialInstructions') as string) || null,
           },
-          representativeId: session.userId,
-          role: session.role,
         },
       })
       toast.success('Window updated')
@@ -109,14 +101,10 @@ export function WindowsTable({ windows, session, onUpdate }: WindowsTableProps) 
     const manualPrice = formData.get('manualPrice') as string
 
     try {
-      await (updateWindow as any)({
+      await updateWindow({
         data: {
           windowId: priceWindow.id,
-          data: {
-            manualPrice: manualPrice || null,
-          },
-          representativeId: session.userId,
-          role: session.role,
+          data: { manualPrice: manualPrice || null },
         },
       })
       toast.success(manualPrice ? 'Price override saved' : 'Price override removed')
@@ -129,9 +117,7 @@ export function WindowsTable({ windows, session, onUpdate }: WindowsTableProps) 
     }
   }
 
-  const getPrice = (w: Window) => {
-    return parseFloat(w.manualPrice || w.calculatedPrice || '0')
-  }
+  const getPrice = (w: Window) => lineItemPrice(w)
 
   return (
     <>
@@ -171,7 +157,7 @@ export function WindowsTable({ windows, session, onUpdate }: WindowsTableProps) 
                     <div className="flex items-center gap-1">
                       <span
                         className="w-3 h-3 rounded border"
-                        style={{ backgroundColor: window.frameColor.hexColor }}
+                        style={{ backgroundColor: window.frameColor.hexColor ?? 'transparent' }}
                       />
                       {window.frameColor.name}
                     </div>

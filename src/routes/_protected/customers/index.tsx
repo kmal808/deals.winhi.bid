@@ -40,13 +40,7 @@ export const Route = createFileRoute('/_protected/customers/')({
     const session = await getSession()
     if (!session) return { customers: [], session: null }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const customers = await (listCustomers as any)({
-      data: {
-        representativeId: session.userId,
-        role: session.role,
-      },
-    })
+    const customers = await listCustomers({ data: {} })
     return { customers, session }
   },
   component: CustomersPage,

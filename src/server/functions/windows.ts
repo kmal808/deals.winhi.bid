@@ -1,156 +1,170 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getDb } from '@/lib/db'
+import { z } from 'zod'
+import { authMiddleware } from '@/server/middleware/auth'
+
+const optionalId = z.number().int().positive().nullable().optional()
 
 // Get windows for a customer
-export const getWindows = createServerFn().handler(async (ctx: any) => {
-  const { customerId, representativeId, role } = ctx?.data || {}
-  const db = await getDb()
-  const { windows, customers } = await import('@/db/schema')
-  const { eq, asc } = await import('drizzle-orm')
+export const getWindows = createServerFn()
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ customerId: z.number().int().positive() }))
+  .handler(async ({ data, context }) => {
+    const { assertCustomerAccess } = await import('@/server/access')
+    const { getDb } = await import('@/lib/db')
+    const { windows } = await import('@/db/schema')
+    const { eq, asc } = await import('drizzle-orm')
 
-  if (!customerId) {
-    throw new Error('Customer ID is required')
-  }
+    await assertCustomerAccess(data.customerId, context.session)
 
-  // Check access
-  const customer = await db.query.customers.findFirst({
-    where: eq(customers.id, customerId),
+    const db = await getDb()
+    return await db.query.windows.findMany({
+      where: eq(windows.customerId, data.customerId),
+      with: {
+        brand: true,
+        productConfig: true,
+        frameType: true,
+        frameColor: true,
+        glassType: true,
+        gridStyle: true,
+        gridSize: true,
+      },
+      orderBy: [asc(windows.sortOrder)],
+    })
   })
-
-  if (!customer) {
-    throw new Error('Customer not found')
-  }
-
-  if (role === 'representative' && customer.representativeId !== representativeId) {
-    throw new Error('Access denied')
-  }
-
-  return await db.query.windows.findMany({
-    where: eq(windows.customerId, customerId),
-    with: {
-      brand: true,
-      productConfig: true,
-      frameType: true,
-      frameColor: true,
-      glassType: true,
-      gridStyle: true,
-      gridSize: true,
-    },
-    orderBy: [asc(windows.sortOrder)],
-  })
-})
 
 // Update a single window
-export const updateWindow = createServerFn().handler(async (ctx: any) => {
-  const { windowId, data, representativeId, role } = ctx?.data || {}
-  const db = await getDb()
-  const { windows } = await import('@/db/schema')
-  const { eq } = await import('drizzle-orm')
-
-  if (!windowId || !data) {
-    throw new Error('Window ID and data are required')
-  }
-
-  // Get window and check access
-  const window = await db.query.windows.findFirst({
-    where: eq(windows.id, windowId),
-    with: { customer: true },
-  })
-
-  if (!window) {
-    throw new Error('Window not found')
-  }
-
-  if (role === 'representative' && window.customer.representativeId !== representativeId) {
-    throw new Error('Access denied')
-  }
-
-  const [updated] = await db
-    .update(windows)
-    .set({
-      location: data.location ?? window.location,
-      width: data.width ?? window.width,
-      height: data.height ?? window.height,
-      brandId: data.brandId ?? window.brandId,
-      productConfigId: data.productConfigId ?? window.productConfigId,
-      frameTypeId: data.frameTypeId ?? window.frameTypeId,
-      frameColorId: data.frameColorId ?? window.frameColorId,
-      glassTypeId: data.glassTypeId ?? window.glassTypeId,
-      gridStyleId: data.gridStyleId ?? window.gridStyleId,
-      gridSizeId: data.gridSizeId ?? window.gridSizeId,
-      calculatedPrice: data.calculatedPrice ?? window.calculatedPrice,
-      manualPrice: data.manualPrice ?? window.manualPrice,
-      specialInstructions: data.specialInstructions ?? window.specialInstructions,
-      sortOrder: data.sortOrder ?? window.sortOrder,
-      updatedAt: new Date(),
+export const updateWindow = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      windowId: z.number().int().positive(),
+      data: z.object({
+        location: z.string().trim().min(1).max(255).optional(),
+        width: z.union([z.string(), z.number()]).optional(),
+        height: z.union([z.string(), z.number()]).optional(),
+        brandId: optionalId,
+        productConfigId: optionalId,
+        frameTypeId: optionalId,
+        frameColorId: optionalId,
+        glassTypeId: optionalId,
+        gridStyleId: optionalId,
+        gridSizeId: optionalId,
+        // An explicit override entered by the rep. Null clears it and returns
+        // the line to the calculated price.
+        manualPrice: z.union([z.string(), z.number()]).nullable().optional(),
+        specialInstructions: z.string().max(5000).nullable().optional(),
+        sortOrder: z.number().int().optional(),
+      }),
     })
-    .where(eq(windows.id, windowId))
-    .returning()
+  )
+  .handler(async ({ data, context }) => {
+    const { assertWindowAccess } = await import('@/server/access')
+    const { computeUnitPrice } = await import('@/server/pricing')
+    const { getDb } = await import('@/lib/db')
+    const { windows } = await import('@/db/schema')
+    const { eq } = await import('drizzle-orm')
 
-  return updated
-})
+    const existing = await assertWindowAccess(data.windowId, context.session)
+    const fields = data.data
+
+    const next = {
+      location: fields.location ?? existing.location,
+      width: fields.width !== undefined ? String(fields.width) : existing.width,
+      height: fields.height !== undefined ? String(fields.height) : existing.height,
+      brandId: fields.brandId !== undefined ? fields.brandId : existing.brandId,
+      productConfigId:
+        fields.productConfigId !== undefined ? fields.productConfigId : existing.productConfigId,
+      frameTypeId: fields.frameTypeId !== undefined ? fields.frameTypeId : existing.frameTypeId,
+      frameColorId: fields.frameColorId !== undefined ? fields.frameColorId : existing.frameColorId,
+      glassTypeId: fields.glassTypeId !== undefined ? fields.glassTypeId : existing.glassTypeId,
+      gridStyleId: fields.gridStyleId !== undefined ? fields.gridStyleId : existing.gridStyleId,
+      gridSizeId: fields.gridSizeId !== undefined ? fields.gridSizeId : existing.gridSizeId,
+    }
+
+    // Recomputed from the factor tables on every edit, so changing a dimension
+    // or an option can never leave a stale price behind.
+    const calculatedPrice = await computeUnitPrice(next)
+
+    const db = await getDb()
+    const [updated] = await db
+      .update(windows)
+      .set({
+        ...next,
+        calculatedPrice: String(calculatedPrice),
+        manualPrice:
+          fields.manualPrice === undefined
+            ? existing.manualPrice
+            : fields.manualPrice === null || fields.manualPrice === ''
+              ? null
+              : String(fields.manualPrice),
+        specialInstructions:
+          fields.specialInstructions !== undefined
+            ? fields.specialInstructions
+            : existing.specialInstructions,
+        sortOrder: fields.sortOrder ?? existing.sortOrder,
+        updatedAt: new Date(),
+      })
+      .where(eq(windows.id, data.windowId))
+      .returning()
+
+    return updated
+  })
 
 // Delete a window
-export const deleteWindow = createServerFn().handler(async (ctx: any) => {
-  const { windowId, representativeId, role } = ctx?.data || {}
-  const db = await getDb()
-  const { windows } = await import('@/db/schema')
-  const { eq } = await import('drizzle-orm')
+export const deleteWindow = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ windowId: z.number().int().positive() }))
+  .handler(async ({ data, context }) => {
+    const { assertWindowAccess } = await import('@/server/access')
+    const { getDb } = await import('@/lib/db')
+    const { windows } = await import('@/db/schema')
+    const { eq } = await import('drizzle-orm')
 
-  if (!windowId) {
-    throw new Error('Window ID is required')
-  }
+    await assertWindowAccess(data.windowId, context.session)
 
-  // Get window and check access
-  const window = await db.query.windows.findFirst({
-    where: eq(windows.id, windowId),
-    with: { customer: true },
+    const db = await getDb()
+    await db.delete(windows).where(eq(windows.id, data.windowId))
+
+    return { success: true as const }
   })
-
-  if (!window) {
-    throw new Error('Window not found')
-  }
-
-  if (role === 'representative' && window.customer.representativeId !== representativeId) {
-    throw new Error('Access denied')
-  }
-
-  await db.delete(windows).where(eq(windows.id, windowId))
-
-  return { success: true }
-})
 
 // Reorder windows
-export const reorderWindows = createServerFn().handler(async (ctx: any) => {
-  const { customerId, windowIds, representativeId, role } = ctx?.data || {}
-  const db = await getDb()
-  const { windows, customers } = await import('@/db/schema')
-  const { eq } = await import('drizzle-orm')
+export const reorderWindows = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      customerId: z.number().int().positive(),
+      windowIds: z.array(z.number().int().positive()).min(1),
+    })
+  )
+  .handler(async ({ data, context }) => {
+    const { assertCustomerAccess } = await import('@/server/access')
+    const { getDb } = await import('@/lib/db')
+    const { windows } = await import('@/db/schema')
+    const { and, eq, inArray } = await import('drizzle-orm')
 
-  if (!customerId || !windowIds?.length) {
-    throw new Error('Customer ID and window IDs are required')
-  }
+    await assertCustomerAccess(data.customerId, context.session)
 
-  // Check access
-  const customer = await db.query.customers.findFirst({
-    where: eq(customers.id, customerId),
+    const db = await getDb()
+
+    // Only reorder ids that actually belong to this customer, so a crafted
+    // payload cannot renumber someone else's line items.
+    const owned = await db
+      .select({ id: windows.id })
+      .from(windows)
+      .where(and(eq(windows.customerId, data.customerId), inArray(windows.id, data.windowIds)))
+
+    const ownedIds = new Set(owned.map((w) => w.id))
+    const ordered = data.windowIds.filter((id) => ownedIds.has(id))
+
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < ordered.length; i++) {
+        await tx
+          .update(windows)
+          .set({ sortOrder: i + 1 })
+          .where(eq(windows.id, ordered[i]))
+      }
+    })
+
+    return { success: true as const }
   })
-
-  if (!customer) {
-    throw new Error('Customer not found')
-  }
-
-  if (role === 'representative' && customer.representativeId !== representativeId) {
-    throw new Error('Access denied')
-  }
-
-  // Update sort order for each window
-  for (let i = 0; i < windowIds.length; i++) {
-    await db
-      .update(windows)
-      .set({ sortOrder: i + 1 })
-      .where(eq(windows.id, windowIds[i]))
-  }
-
-  return { success: true }
-})

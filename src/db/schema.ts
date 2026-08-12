@@ -29,6 +29,18 @@ export const representatives = pgTable('representatives', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
+// Sessions
+// Persisted rather than held in process memory so a container restart does not
+// sign every representative out, and so multiple instances share login state.
+export const sessions = pgTable('sessions', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  representativeId: integer('representative_id')
+    .references(() => representatives.id, { onDelete: 'cascade' })
+    .notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
 // Customers
 export const customers = pgTable('customers', {
   id: serial('id').primaryKey(),
@@ -201,6 +213,14 @@ export const settings = pgTable('settings', {
 // Relations
 export const representativesRelations = relations(representatives, ({ many }) => ({
   customers: many(customers),
+  sessions: many(sessions),
+}))
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  representative: one(representatives, {
+    fields: [sessions.representativeId],
+    references: [representatives.id],
+  }),
 }))
 
 export const customersRelations = relations(customers, ({ one, many }) => ({

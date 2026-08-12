@@ -24,7 +24,7 @@ interface Brand {
 
 export const Route = createFileRoute('/_protected/admin/brands')({
   loader: async () => {
-    const brands = await (listBrands as any)()
+    const brands = await listBrands()
     return { brands }
   },
   component: BrandsPage,
@@ -67,7 +67,7 @@ function BrandsPage() {
     if (!confirm(`Are you sure you want to delete "${brand.name}"?`)) return
 
     try {
-      await (deleteBrand as any)({ data: { id: brand.id } })
+      await deleteBrand({ data: { id: brand.id } })
       window.location.reload()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
@@ -87,9 +87,9 @@ function BrandsPage() {
 
     try {
       if (editingBrand) {
-        await (updateBrand as any)({ data: { id: editingBrand.id, ...data } })
+        await updateBrand({ data: { id: editingBrand.id, ...data } })
       } else {
-        await (createBrand as any)({ data })
+        await createBrand({ data })
       }
       setIsDialogOpen(false)
       window.location.reload()
@@ -115,7 +115,7 @@ function BrandsPage() {
 
       <DataTable
         title="All Brands"
-        description="Price factor multiplies the base price calculation"
+        description="Price factors are dollars per linear inch, summed across all options"
         data={brands || []}
         columns={columns}
         onAdd={handleAdd}
@@ -159,7 +159,8 @@ function BrandsPage() {
                   placeholder="1.0"
                 />
                 <p className="text-xs text-gray-500">
-                  Multiplier applied to base price. 1.0 = no change, 1.1 = 10% increase
+                  Dollars per linear inch. Added to the frame, colour, glass and grid
+                  factors, then multiplied by (width + height).
                 </p>
               </div>
             </DialogBody>

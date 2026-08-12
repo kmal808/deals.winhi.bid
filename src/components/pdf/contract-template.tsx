@@ -1,4 +1,9 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { BRAND } from '@/lib/brand'
+import { Letterhead } from './letterhead'
+import { calculateOrderTotals, lineItemPrice } from '@/lib/pricing'
+import { designFromOperationType, type UnitDesign } from '@/lib/window-design'
+import { WindowDrawing } from './window-drawing'
 
 const styles = StyleSheet.create({
   page: {
@@ -16,7 +21,7 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1e40af',
+    color: BRAND.orange,
   },
   companyInfo: {
     fontSize: 8,
@@ -31,10 +36,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginVertical: 15,
+    marginVertical: 12,
     textTransform: 'uppercase',
-    backgroundColor: '#1e40af',
-    color: '#fff',
+    letterSpacing: 2,
+    backgroundColor: BRAND.orange,
+    color: BRAND.black,
     padding: 8,
   },
   twoColumn: {
@@ -50,7 +56,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e40af',
+    borderBottomColor: BRAND.orange,
     paddingBottom: 2,
   },
   row: {
@@ -71,7 +77,7 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#374151',
+    backgroundColor: BRAND.black,
     color: '#fff',
     padding: 5,
     fontSize: 8,
@@ -87,17 +93,18 @@ const styles = StyleSheet.create({
   tableRowAlt: {
     backgroundColor: '#f9fafb',
   },
-  col1: { width: '20%' },
-  col2: { width: '25%' },
-  col3: { width: '12%' },
-  col4: { width: '28%' },
+  col0: { width: '11%' },
+  col1: { width: '16%' },
+  col2: { width: '22%' },
+  col3: { width: '11%' },
+  col4: { width: '25%' },
   col5: { width: '15%', textAlign: 'right' },
   totalsBox: {
     marginTop: 15,
     marginLeft: 'auto',
     width: 220,
     borderWidth: 1,
-    borderColor: '#1e40af',
+    borderColor: BRAND.orange,
     padding: 10,
   },
   totalRow: {
@@ -110,7 +117,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: '#1e40af',
+    borderTopColor: BRAND.orange,
   },
   grandTotalLabel: {
     fontSize: 11,
@@ -123,7 +130,7 @@ const styles = StyleSheet.create({
   paymentSection: {
     marginTop: 15,
     padding: 10,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: BRAND.tint,
   },
   paymentTitle: {
     fontSize: 10,
@@ -214,10 +221,11 @@ interface Window {
   height: string
   calculatedPrice: string | null
   manualPrice: string | null
+  design?: UnitDesign | null
   brand?: { name: string } | null
-  productConfig?: { name: string } | null
+  productConfig?: { name: string; operationType?: string | null } | null
   frameType?: { name: string } | null
-  frameColor?: { name: string } | null
+  frameColor?: { name: string; hexColor?: string | null } | null
   glassType?: { name: string } | null
   gridStyle?: { name: string } | null
 }
@@ -225,7 +233,7 @@ interface Window {
 interface Disclaimer {
   id: number
   description: string
-  sortOrder: number
+  sortOrder: number | null
 }
 
 interface Customer {
@@ -255,40 +263,30 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
   const today = contractDate || new Date().toLocaleDateString()
   const contractNumber = `WH-${customer.id.toString().padStart(5, '0')}`
 
-  const windowsTotal = customer.windows.reduce((sum, w) => {
-    return sum + parseFloat(w.manualPrice || w.calculatedPrice || '0')
-  }, 0)
-
-  const discountPercent = parseFloat(customer.discountPercent || '0')
-  const discountAmount = windowsTotal * (discountPercent / 100)
-  const subtotal = windowsTotal - discountAmount
-  const taxAmount = subtotal * 0.04712
-  const total = subtotal + taxAmount
-  const downPayment = customer.downPaymentAmount
-    ? parseFloat(customer.downPaymentAmount)
-    : total * 0.5
-  const balance = total - downPayment
+  const {
+    itemsTotal: windowsTotal,
+    discountPercent,
+    discountAmount,
+    subtotal,
+    taxAmount,
+    total,
+    downPayment,
+    balanceDue: balance,
+  } = calculateOrderTotals({
+    items: customer.windows,
+    discountPercent: customer.discountPercent,
+    downPaymentAmount: customer.downPaymentAmount,
+  })
 
   return (
     <Document>
       <Page size="LETTER" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.companySection}>
-            <Text style={styles.companyName}>Windows Hawaii</Text>
-            <Text style={styles.companyInfo}>
-              123 Aloha Street, Honolulu, HI 96801
-            </Text>
-            <Text style={styles.companyInfo}>
-              (808) 555-1234 | info@windowshawaii.com
-            </Text>
-            <Text style={styles.companyInfo}>License #ABC123456</Text>
-          </View>
-          <View>
-            <Text style={styles.contractNumber}>Contract #: {contractNumber}</Text>
-            <Text style={styles.contractNumber}>Date: {today}</Text>
-          </View>
-        </View>
+        <Letterhead
+          meta={[
+            { label: 'Contract #', value: contractNumber },
+            { label: 'Date', value: today },
+          ]}
+        />
 
         <Text style={styles.title}>Installation Contract</Text>
 
@@ -350,6 +348,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
         <Text style={styles.sectionTitle}>Products & Services</Text>
         <View style={styles.table}>
           <View style={styles.tableHeader}>
+            <Text style={styles.col0}>Drawing</Text>
             <Text style={styles.col1}>Location</Text>
             <Text style={styles.col2}>Product</Text>
             <Text style={styles.col3}>Size</Text>
@@ -361,6 +360,19 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
               key={window.id}
               style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
             >
+              <View style={styles.col0}>
+                <WindowDrawing
+                  design={
+                    window.design ??
+                    designFromOperationType(window.productConfig?.operationType)
+                  }
+                  width={parseFloat(window.width) || 36}
+                  height={parseFloat(window.height) || 48}
+                  frameColor={window.frameColor?.hexColor}
+                  boxWidth={46}
+                  boxHeight={46}
+                />
+              </View>
               <Text style={styles.col1}>{window.location}</Text>
               <Text style={styles.col2}>
                 {window.productConfig?.name || '—'}
@@ -378,7 +390,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
                   .join(', ') || '—'}
               </Text>
               <Text style={styles.col5}>
-                ${parseFloat(window.manualPrice || window.calculatedPrice || '0').toFixed(2)}
+                ${lineItemPrice(window).toFixed(2)}
               </Text>
             </View>
           ))}
@@ -432,7 +444,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
       {/* Page 2 - Terms & Signature */}
       <Page size="LETTER" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.companyName}>Windows Hawaii</Text>
+          <Text style={styles.companyName}>{BRAND.company.name}</Text>
           <Text style={styles.contractNumber}>Contract #: {contractNumber}</Text>
         </View>
 
@@ -453,7 +465,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
         <View style={{ marginTop: 20, padding: 10, backgroundColor: '#f3f4f6' }}>
           <Text style={{ fontSize: 9, lineHeight: 1.4 }}>
             By signing below, Customer agrees to the terms and conditions stated herein and
-            authorizes Windows Hawaii to perform the work described above. Customer acknowledges
+            authorizes {BRAND.company.name} to perform the work described above. Customer acknowledges
             receipt of a copy of this contract and agrees to pay the total amount specified
             according to the payment terms outlined.
           </Text>
@@ -479,7 +491,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
           <View style={styles.signatureBox}>
             <Text style={styles.signatureLabel}>Company Representative:</Text>
             <View style={styles.signatureLine} />
-            <Text style={{ fontSize: 9 }}>{customer.representative?.name || 'Windows Hawaii'}</Text>
+            <Text style={{ fontSize: 9 }}>{customer.representative?.name || BRAND.company.name}</Text>
             <View style={styles.dateLine}>
               <Text style={styles.dateLabel}>Date:</Text>
               <Text style={styles.dateValue}>{today}</Text>
@@ -490,10 +502,10 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
         {/* Footer */}
         <View style={styles.footer}>
           <Text>
-            Windows Hawaii | 123 Aloha Street, Honolulu, HI 96801 | License #ABC123456
+            {BRAND.company.name} | {BRAND.company.address} | Lic# {BRAND.company.license}
           </Text>
           <Text style={{ marginTop: 4 }}>
-            Thank you for choosing Windows Hawaii!
+            Thank you for choosing {BRAND.company.name}!
           </Text>
         </View>
         <Text style={styles.pageNumber}>Page 2 of 2</Text>

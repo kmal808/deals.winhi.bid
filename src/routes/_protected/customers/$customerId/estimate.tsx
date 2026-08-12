@@ -7,6 +7,7 @@ import { ArrowLeft, Download } from 'lucide-react'
 import { EstimateTemplate } from '@/components/pdf/estimate-template'
 import { getCustomer } from '@/server/functions/customers'
 import { getSession } from '@/server/functions/auth'
+import { calculateOrderTotals, formatCurrency } from '@/lib/pricing'
 
 export const Route = createFileRoute('/_protected/customers/$customerId/estimate')({
   loader: async ({ params }) => {
@@ -16,13 +17,7 @@ export const Route = createFileRoute('/_protected/customers/$customerId/estimate
     }
 
     const customerId = parseInt(params.customerId, 10)
-    const customer = await (getCustomer as any)({
-      data: {
-        customerId,
-        representativeId: session.userId,
-        role: session.role,
-      },
-    })
+    const customer = await getCustomer({ data: { customerId } })
 
     return { customer, session }
   },
@@ -125,16 +120,12 @@ function EstimatePage() {
             <div>
               <p className="text-gray-500">Total</p>
               <p className="text-lg font-semibold text-blue-600">
-                $
-                {(
-                  customer.windows?.reduce(
-                    (sum: number, w: any) =>
-                      sum + parseFloat(w.manualPrice || w.calculatedPrice || '0'),
-                    0
-                  ) *
-                  (1 - parseFloat(customer.discountPercent || '0') / 100) *
-                  1.04712
-                ).toFixed(2)}
+                {formatCurrency(
+                  calculateOrderTotals({
+                    items: customer.windows,
+                    discountPercent: customer.discountPercent,
+                  }).total
+                )}
               </p>
             </div>
           </div>

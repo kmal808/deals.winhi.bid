@@ -21,13 +21,13 @@ interface ProductConfig {
   name: string
   category: string
   operationType: string | null
-  liteCount: number
+  liteCount: number | null
   imagePath: string | null
 }
 
 export const Route = createFileRoute('/_protected/admin/product-configs')({
   loader: async () => {
-    const productConfigs = await (listProductConfigs as any)()
+    const productConfigs = await listProductConfigs()
     return { productConfigs }
   },
   component: ProductConfigsPage,
@@ -84,7 +84,7 @@ function ProductConfigsPage() {
     if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return
 
     try {
-      await (deleteProductConfig as any)({ data: { id: item.id } })
+      await deleteProductConfig({ data: { id: item.id } })
       window.location.reload()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
@@ -99,17 +99,18 @@ function ProductConfigsPage() {
     const formData = new FormData(e.currentTarget)
     const data = {
       name: formData.get('name') as string,
-      category: formData.get('category') as string,
+      category: formData.get('category') as 'window' | 'door',
       operationType: (formData.get('operationType') as string) || null,
       liteCount: parseInt(formData.get('liteCount') as string) || 1,
-      imagePath: (formData.get('imagePath') as string) || null,
+      // Not nullable in the schema — the product grid has nothing to draw without it.
+      imagePath: formData.get('imagePath') as string,
     }
 
     try {
       if (editingItem) {
-        await (updateProductConfig as any)({ data: { id: editingItem.id, ...data } })
+        await updateProductConfig({ data: { id: editingItem.id, ...data } })
       } else {
-        await (createProductConfig as any)({ data })
+        await createProductConfig({ data })
       }
       setIsDialogOpen(false)
       window.location.reload()

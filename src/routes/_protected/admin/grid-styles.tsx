@@ -25,7 +25,7 @@ interface GridStyle {
 
 export const Route = createFileRoute('/_protected/admin/grid-styles')({
   loader: async () => {
-    const gridStyles = await (listGridStyles as any)()
+    const gridStyles = await listGridStyles()
     return { gridStyles }
   },
   component: GridStylesPage,
@@ -74,7 +74,7 @@ function GridStylesPage() {
     if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return
 
     try {
-      await (deleteGridStyle as any)({ data: { id: item.id } })
+      await deleteGridStyle({ data: { id: item.id } })
       window.location.reload()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
@@ -95,9 +95,9 @@ function GridStylesPage() {
 
     try {
       if (editingItem) {
-        await (updateGridStyle as any)({ data: { id: editingItem.id, ...data } })
+        await updateGridStyle({ data: { id: editingItem.id, ...data } })
       } else {
-        await (createGridStyle as any)({ data })
+        await createGridStyle({ data })
       }
       setIsDialogOpen(false)
       window.location.reload()
