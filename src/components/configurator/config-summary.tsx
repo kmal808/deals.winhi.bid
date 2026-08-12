@@ -1,7 +1,10 @@
+import { useMemo } from 'react'
 import { useConfiguratorStore } from '@/stores/configurator-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart, Trash2 } from 'lucide-react'
+import { WindowDesigner } from './window-designer'
+import { designFromOperationType } from '@/lib/window-design'
 
 export function ConfigSummary() {
   const currentConfig = useConfiguratorStore((s) => s.currentConfig)
@@ -13,8 +16,36 @@ export function ConfigSummary() {
   const currentPrice = calculatePrice()
   const cartTotal = cart.reduce((sum, item) => sum + item.calculatedPrice, 0)
 
+  // The unit is drawn on every step, not only the design step, so a rep can see
+  // the effect of a colour or an operation choice as they make it.
+  const previewDesign = useMemo(
+    () =>
+      currentConfig.design ??
+      designFromOperationType(currentConfig.operationType, currentConfig.category || 'window'),
+    [currentConfig.design, currentConfig.operationType, currentConfig.category]
+  )
+
   return (
     <div className="space-y-4">
+      {/* Live preview */}
+      {currentConfig.category && (
+        <Card>
+          <CardContent className="pt-4">
+            <p className="mb-1 text-xs font-medium text-blue-600">Outside View</p>
+            <WindowDesigner
+              readOnly
+              design={previewDesign}
+              width={currentConfig.width || 36}
+              height={currentConfig.height || 48}
+              frameColor={currentConfig.frameColorHex}
+              canvasWidth={240}
+              canvasHeight={190}
+              onChange={() => {}}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Current Configuration */}
       <Card>
         <CardHeader className="pb-3">

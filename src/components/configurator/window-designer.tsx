@@ -143,6 +143,8 @@ interface WindowDesignerProps {
   canvasWidth?: number
   canvasHeight?: number
   frameColor?: string | null
+  /** Drawing only: no selection, no controls. Used for the wizard sidebar. */
+  readOnly?: boolean
 }
 
 export function WindowDesigner({
@@ -153,6 +155,7 @@ export function WindowDesigner({
   canvasWidth = 420,
   canvasHeight = 320,
   frameColor,
+  readOnly = false,
 }: WindowDesignerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -194,7 +197,7 @@ export function WindowDesigner({
   }))
 
   // A section can disappear when its parent is merged; do not keep pointing at it.
-  const selected = scaledLeaves.find((l) => l.id === selectedId) ?? null
+  const selected = readOnly ? null : (scaledLeaves.find((l) => l.id === selectedId) ?? null)
   const activeId = selected?.id ?? null
 
   const apply = (next: UnitDesign, keepId?: string) => {
@@ -231,8 +234,9 @@ export function WindowDesigner({
                     fill={frameColor || '#ffffff'}
                     stroke={INK}
                     strokeWidth={0.75}
-                    onClick={() => setSelectedId(l.id)}
-                    onTap={() => setSelectedId(l.id)}
+                    onClick={readOnly ? undefined : () => setSelectedId(l.id)}
+                    onTap={readOnly ? undefined : () => setSelectedId(l.id)}
+                    listening={!readOnly}
                   />
                 ))}
 
@@ -246,8 +250,9 @@ export function WindowDesigner({
                   fill={l.id === activeId ? GLASS_SELECTED : GLASS}
                   stroke={l.id === activeId ? ACCENT : GLASS_STROKE}
                   strokeWidth={l.id === activeId ? 2 : 1}
-                  onClick={() => setSelectedId(l.id)}
-                  onTap={() => setSelectedId(l.id)}
+                  onClick={readOnly ? undefined : () => setSelectedId(l.id)}
+                  onTap={readOnly ? undefined : () => setSelectedId(l.id)}
+                  listening={!readOnly}
                 />
               ))}
 
@@ -333,7 +338,7 @@ export function WindowDesigner({
             })}
           </div>
         </div>
-      ) : (
+      ) : readOnly ? null : (
         <p className="text-sm text-gray-500">
           Click a panel to split it or change how it operates.
         </p>
