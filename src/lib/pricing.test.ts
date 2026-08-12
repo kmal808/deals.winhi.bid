@@ -171,3 +171,73 @@ describe('formatCurrency', () => {
     expect(formatCurrency(-1128)).toBe('-$1,128.00')
   })
 })
+
+describe('per-line discounts and the tax base', () => {
+  it('taxes the whole discounted subtotal, matching the live app screen', () => {
+    // Reproduces a real quote: subtotal 117,497.00 less a 60,194.94 discount
+    // leaves 57,302.06, and 57,302.06 x 0.04712 is 2,700.07.
+    const gross = 117497
+    const discount = 60194.94
+    const totals = calculateOrderTotals({
+      items: [{ calculatedPrice: String(gross), manualPrice: null }],
+      discountPercent: (discount / gross) * 100,
+    })
+
+    expect(totals.itemsTotal).toBe(gross)
+    expect(totals.discountAmount).toBeCloseTo(discount, 2)
+    expect(totals.subtotal).toBeCloseTo(57302.06, 2)
+    expect(totals.taxAmount).toBeCloseTo(2700.07, 2)
+    expect(totals.total).toBeCloseTo(60002.13, 2)
+  })
+
+  it('discounts a door at its own rate, not the customer rate', () => {
+    const totals = calculateOrderTotals({
+      items: [
+        { calculatedPrice: '1000.00', manualPrice: null },
+        { calculatedPrice: '2000.00', manualPrice: null, isDoor: true, customDiscountPercent: '10' },
+      ],
+      discountPercent: '50',
+    })
+
+    // Window: 1000 less 50%. Door: 2000 less its own 10%.
+    expect(totals.itemsTotal).toBe(3000)
+    expect(totals.discountAmount).toBe(700)
+    expect(totals.subtotal).toBe(2300)
+  })
+
+  it('honours a per-line rate on a window flagged for one', () => {
+    const totals = calculateOrderTotals({
+      items: [
+        { calculatedPrice: '1000.00', manualPrice: null },
+        {
+          calculatedPrice: '1000.00',
+          manualPrice: null,
+          applyCustomDiscount: true,
+          customDiscountPercent: '25',
+        },
+      ],
+      discountPercent: '50',
+    })
+    expect(totals.discountAmount).toBe(750)
+    expect(totals.subtotal).toBe(1250)
+  })
+
+  it('leaves a line with its own flag but no rate at full price', () => {
+    const totals = calculateOrderTotals({
+      items: [{ calculatedPrice: '1000.00', manualPrice: null, isDoor: true }],
+      discountPercent: '50',
+    })
+    // A door is never swept into the customer's blanket discount by default.
+    expect(totals.discountAmount).toBe(0)
+    expect(totals.subtotal).toBe(1000)
+  })
+
+  it('is unchanged for items that carry no discount fields at all', () => {
+    const totals = calculateOrderTotals({
+      items: [{ calculatedPrice: '100.00', manualPrice: null }],
+      discountPercent: '10',
+    })
+    expect(totals.discountAmount).toBe(10)
+    expect(totals.subtotal).toBe(90)
+  })
+})

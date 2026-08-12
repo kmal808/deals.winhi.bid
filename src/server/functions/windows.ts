@@ -81,9 +81,31 @@ export const updateWindow = createServerFn({ method: 'POST' })
       gridSizeId: fields.gridSizeId !== undefined ? fields.gridSizeId : existing.gridSizeId,
     }
 
-    // Recomputed from the factor tables on every edit, so changing a dimension
-    // or an option can never leave a stale price behind.
-    const calculatedPrice = await computeUnitPrice({ ...next, isDoor: existing.isDoor ?? false })
+    /**
+     * A saved line keeps the rate it was quoted at.
+     *
+     * Factors are edited as the market moves, so repricing on every save would
+     * mean correcting a typo in a location silently reissued the line at
+     * today's rates — which is exactly the trap that led the old app to keep
+     * five spellings of one brand at five different factors rather than edit
+     * the factor in place.
+     *
+     * Only a change that actually alters the unit re-prices it.
+     */
+    const PRICING_FIELDS = [
+      'width',
+      'height',
+      'brandId',
+      'frameTypeId',
+      'frameColorId',
+      'glassTypeId',
+      'gridStyleId',
+    ] as const
+    const repriced = PRICING_FIELDS.some((key) => fields[key] !== undefined)
+
+    const calculatedPrice = repriced
+      ? await computeUnitPrice({ ...next, isDoor: existing.isDoor ?? false })
+      : null
 
     const db = await getDb()
     const [updated] = await db

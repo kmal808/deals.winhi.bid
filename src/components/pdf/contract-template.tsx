@@ -250,6 +250,11 @@ interface Window {
   height: string
   calculatedPrice: string | null
   manualPrice: string | null
+  // Read by calculateOrderTotals: doors and flagged lines are discounted
+  // at their own rate rather than the customer's.
+  isDoor?: boolean | null
+  applyCustomDiscount?: boolean | null
+  customDiscountPercent?: string | null
   lowE?: boolean | null
   specialInstructions?: string | null
   design?: UnitDesign | null

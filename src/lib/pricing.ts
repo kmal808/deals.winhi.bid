@@ -94,6 +94,19 @@ export function ratePerUnitedInch(
 export interface PricedLineItem {
   calculatedPrice?: number | string | null
   manualPrice?: number | string | null
+  /**
+   * Doors, and any line flagged with its own rate, are discounted individually
+   * rather than at the customer's blanket rate — a door is quoted by hand and
+   * carries whatever deal was struck on it.
+   */
+  isDoor?: boolean | null
+  applyCustomDiscount?: boolean | null
+  customDiscountPercent?: number | string | null
+}
+
+/** True when the line carries its own discount instead of the customer's. */
+function hasOwnDiscount(item: PricedLineItem): boolean {
+  return Boolean(item.isDoor) || Boolean(item.applyCustomDiscount)
 }
 
 /** A manually entered price always wins over the computed one. */
@@ -126,13 +139,32 @@ export function calculateOrderTotals(input: {
   /** Explicit down payment; falls back to DEFAULT_DOWN_PAYMENT_RATE of the total. */
   downPaymentAmount?: number | string | null
 }): OrderTotals {
-  const itemsTotal = roundCents(
-    (input.items ?? []).reduce((sum, item) => sum + lineItemPrice(item), 0)
-  )
-
+  const items = input.items ?? []
   const discountPercent = toNumber(input.discountPercent)
-  const discountAmount = roundCents(itemsTotal * (discountPercent / 100))
+
+  // Lines split into two buckets, as the PHP app does: those discounted at the
+  // customer's blanket rate, and those carrying a rate of their own.
+  let atCustomerRate = 0
+  let ownGross = 0
+  let ownDiscount = 0
+
+  for (const item of items) {
+    const price = lineItemPrice(item)
+    if (hasOwnDiscount(item)) {
+      ownGross += price
+      ownDiscount += price * (toNumber(item.customDiscountPercent) / 100)
+    } else {
+      atCustomerRate += price
+    }
+  }
+
+  const itemsTotal = roundCents(atCustomerRate + ownGross)
+  const discountAmount = roundCents(atCustomerRate * (discountPercent / 100) + ownDiscount)
   const subtotal = roundCents(itemsTotal - discountAmount)
+
+  // Tax is charged on the whole discounted subtotal, doors included. The PHP
+  // app taxed only the windows bucket, before the discount, which both
+  // undercharged tax and disagreed with the figure its own screen displayed.
   const taxAmount = roundCents(subtotal * TAX_RATE)
   const total = roundCents(subtotal + taxAmount)
 
