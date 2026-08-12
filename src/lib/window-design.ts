@@ -181,15 +181,39 @@ export function designFromOperationType(
   }
 
   const panels = code.split('')
+
+  /**
+   * A sliding sash travels toward the nearest fixed lite, because that is the
+   * panel it passes in front of: XO slides right, OX slides left, XOX slides in
+   * toward the centre, and OXXO slides *outward* to the two fixed ends. Getting
+   * this from "which half is it in" gives the wrong answer for OXXO.
+   *
+   * With no fixed lite at all (XX) both sashes pass each other at the centre.
+   * A single sash equidistant from two fixed lites (OXO) is genuinely ambiguous;
+   * it defaults to the right and can be overridden in the designer.
+   */
+  const slidesLeft = (index: number): boolean => {
+    let nearest: number | null = null
+    for (let i = 0; i < panels.length; i++) {
+      if (panels[i] !== 'O') continue
+      if (nearest === null || Math.abs(i - index) < Math.abs(nearest - index)) {
+        nearest = i
+      }
+    }
+    if (nearest === null) return index >= panels.length / 2
+    return nearest < index
+  }
+
   const children = panels.map((c, index) => {
     if (c === 'O') return leaf('fixed')
-    // An operating panel slides toward the nearest end of the unit; a door leaf
-    // swings the same way. Left half opens left, right half opens right.
-    const towardLeft = index < panels.length / 2
+
+    // A door leaf hinges on the jamb nearest it and swings outward from the
+    // centre, so a French door (XX) opens like a pair of shutters.
     if (category === 'door') {
-      return leaf(towardLeft ? 'casement-left' : 'casement-right')
+      return leaf(index < panels.length / 2 ? 'casement-left' : 'casement-right')
     }
-    return leaf(towardLeft ? 'slider-left' : 'slider-right')
+
+    return leaf(slidesLeft(index) ? 'slider-left' : 'slider-right')
   })
 
   if (children.length === 1) return { version: 1, root: children[0] }

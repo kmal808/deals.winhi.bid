@@ -1,7 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import { BRAND } from '@/lib/brand'
 import { Letterhead } from './letterhead'
-import { calculateOrderTotals, lineItemPrice } from '@/lib/pricing'
+import { calculateOrderTotals } from '@/lib/pricing'
 import { designFromOperationType, type UnitDesign } from '@/lib/window-design'
 import { WindowDrawing } from './window-drawing'
 
@@ -93,12 +93,27 @@ const styles = StyleSheet.create({
   tableRowAlt: {
     backgroundColor: '#f9fafb',
   },
-  col0: { width: '11%' },
-  col1: { width: '16%' },
-  col2: { width: '22%' },
-  col3: { width: '11%' },
-  col4: { width: '25%' },
+  // Spec matrix, matching the column set the shop already works from.
+  cLoc: { width: '13%' },
+  cBrand: { width: '8%' },
+  cConfig: { width: '7%' },
+  cPic: { width: '10%' },
+  cFrame: { width: '8%' },
+  cW: { width: '6%', textAlign: 'right' },
+  cH: { width: '6%', textAlign: 'right' },
+  cColor: { width: '9%' },
+  cLowE: { width: '5%', textAlign: 'center' },
+  cGlass: { width: '9%' },
+  cGrid: { width: '8%' },
+  cNotes: { width: '11%' },
+  colTotalLabel: { width: '85%', textAlign: 'right' },
   col5: { width: '15%', textAlign: 'right' },
+  viewNote: {
+    fontSize: 7,
+    color: BRAND.orange,
+    marginTop: 4,
+    marginBottom: 2,
+  },
   totalsBox: {
     marginTop: 15,
     marginLeft: 'auto',
@@ -221,6 +236,8 @@ interface Window {
   height: string
   calculatedPrice: string | null
   manualPrice: string | null
+  lowE?: boolean | null
+  specialInstructions?: string | null
   design?: UnitDesign | null
   brand?: { name: string } | null
   productConfig?: { name: string; operationType?: string | null } | null
@@ -228,6 +245,7 @@ interface Window {
   frameColor?: { name: string; hexColor?: string | null } | null
   glassType?: { name: string } | null
   gridStyle?: { name: string } | null
+  gridSize?: { size: string } | null
 }
 
 interface Disclaimer {
@@ -344,23 +362,35 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
           </View>
         </View>
 
-        {/* Windows Table */}
-        <Text style={styles.sectionTitle}>Products & Services</Text>
+        {/* Specification matrix */}
+        <Text style={styles.sectionTitle}>Specification</Text>
+        <Text style={styles.viewNote}>All configurations viewed from the outside, left to right. X = sash that moves, O = sash that is stationary.</Text>
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.col0}>Drawing</Text>
-            <Text style={styles.col1}>Location</Text>
-            <Text style={styles.col2}>Product</Text>
-            <Text style={styles.col3}>Size</Text>
-            <Text style={styles.col4}>Specifications</Text>
-            <Text style={styles.col5}>Price</Text>
+            <Text style={styles.cLoc}>Location</Text>
+            <Text style={styles.cBrand}>Brand</Text>
+            <Text style={styles.cConfig}>Config</Text>
+            <Text style={styles.cPic}>Picture</Text>
+            <Text style={styles.cFrame}>Frame</Text>
+            <Text style={styles.cW}>Width</Text>
+            <Text style={styles.cH}>Height</Text>
+            <Text style={styles.cColor}>Color</Text>
+            <Text style={styles.cLowE}>Low E</Text>
+            <Text style={styles.cGlass}>Glass</Text>
+            <Text style={styles.cGrid}>Grid</Text>
+            <Text style={styles.cNotes}>Special Instr.</Text>
           </View>
           {customer.windows.map((window, index) => (
             <View
               key={window.id}
               style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
             >
-              <View style={styles.col0}>
+              <Text style={styles.cLoc}>{window.location}</Text>
+              <Text style={styles.cBrand}>{window.brand?.name || '—'}</Text>
+              <Text style={styles.cConfig}>
+                {window.productConfig?.operationType || '—'}
+              </Text>
+              <View style={styles.cPic}>
                 <WindowDrawing
                   design={
                     window.design ??
@@ -369,29 +399,22 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
                   width={parseFloat(window.width) || 36}
                   height={parseFloat(window.height) || 48}
                   frameColor={window.frameColor?.hexColor}
-                  boxWidth={46}
-                  boxHeight={46}
+                  boxWidth={44}
+                  boxHeight={44}
                 />
               </View>
-              <Text style={styles.col1}>{window.location}</Text>
-              <Text style={styles.col2}>
-                {window.productConfig?.name || '—'}
-                {window.brand && `\n${window.brand.name}`}
+              <Text style={styles.cFrame}>{window.frameType?.name || '—'}</Text>
+              <Text style={styles.cW}>{window.width}"</Text>
+              <Text style={styles.cH}>{window.height}"</Text>
+              <Text style={styles.cColor}>{window.frameColor?.name || '—'}</Text>
+              <Text style={styles.cLowE}>{window.lowE ? 'Y' : 'N'}</Text>
+              <Text style={styles.cGlass}>{window.glassType?.name || '—'}</Text>
+              <Text style={styles.cGrid}>
+                {window.gridStyle && window.gridStyle.name !== 'None'
+                  ? [window.gridStyle.name, window.gridSize?.size].filter(Boolean).join(' ')
+                  : '—'}
               </Text>
-              <Text style={styles.col3}>{window.width}" × {window.height}"</Text>
-              <Text style={styles.col4}>
-                {[
-                  window.frameType?.name,
-                  window.frameColor?.name,
-                  window.glassType?.name,
-                  window.gridStyle?.name !== 'None' ? window.gridStyle?.name : null,
-                ]
-                  .filter(Boolean)
-                  .join(', ') || '—'}
-              </Text>
-              <Text style={styles.col5}>
-                ${lineItemPrice(window).toFixed(2)}
-              </Text>
+              <Text style={styles.cNotes}>{window.specialInstructions || ''}</Text>
             </View>
           ))}
         </View>

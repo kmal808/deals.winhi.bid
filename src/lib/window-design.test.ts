@@ -31,6 +31,24 @@ describe('designFromOperationType', () => {
     expect(layoutUnit(oo, 60, 48, OPTS).leaves.every((l) => !l.operable)).toBe(true)
   })
 
+  it('slides an operating sash toward the fixed lite, not toward the jamb', () => {
+    // Matches the arrows on the production contract: XO points right, OX left.
+    const sashes = (code: string) =>
+      layoutUnit(designFromOperationType(code), 72, 48, OPTS).leaves.map((l) => l.sash)
+
+    expect(sashes('XO')).toEqual(['slider-right', 'fixed'])
+    expect(sashes('OX')).toEqual(['fixed', 'slider-left'])
+    // Both outer sashes of an XOX travel in toward the centre.
+    expect(sashes('XOX')).toEqual(['slider-right', 'fixed', 'slider-left'])
+    // ...but an OXXO's two centre sashes travel *outward* to the fixed ends,
+    // which is why the direction comes from the nearest fixed lite rather than
+    // from which half of the unit the sash sits in.
+    expect(sashes('OXXO')).toEqual(['fixed', 'slider-left', 'slider-right', 'fixed'])
+    expect(sashes('OOX')).toEqual(['fixed', 'fixed', 'slider-left'])
+    // With no fixed lite the two sashes pass each other at the centre.
+    expect(sashes('XX')).toEqual(['slider-right', 'slider-left'])
+  })
+
   it('models a French door (XX) as two operating leaves', () => {
     const design = designFromOperationType('XX', 'door')
     const leaves = layoutUnit(design, 72, 80, OPTS).leaves
