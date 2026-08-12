@@ -59,10 +59,111 @@ app/
 - [x] Phase 1: Foundation (TanStack Start, Tailwind, Drizzle, Auth)
 - [x] Phase 2: Customer Management (CRUD, search, TanStack Table)
 - [x] Phase 3: Admin Configuration (all config table pages)
-- [x] Phase 4: Window Configurator Wizard (Zustand store, 9-step wizard)
-- [ ] Phase 5: Cart & Window Management
-- [ ] Phase 6: PDF Generation
+- [x] Phase 4: Window Configurator Wizard (Zustand store, 10-step wizard)
+- [x] Phase 5: Cart & Window Management (inline edit, price override, reorder)
+- [x] Phase 6: PDF Generation (estimate + contract via @react-pdf/renderer)
+- [x] Frame designer (Konva) with the drawing on every estimate/contract line item
 - [ ] Phase 7: Polish & Deployment
+
+Verified end to end against a live database: login → create customer → configure a
+window through the wizard → save cart → line item priced and stored server-side.
+
+**Still open for Phase 7**
+
+- `product_configs` has duplicate rows (Awning, Casement, Picture and others appear
+  twice) and uses `PIC`/`AW` rather than the canonical `PW`/`AWN` — worth a cleanup
+  pass
+- The designer splits panels evenly; uneven ratios are supported by the data model
+  (`SplitSection.ratios`) but not yet exposed in the UI
+- Dimension lines per panel on the drawing (the reference Konva demo does this and
+  it is genuinely useful on a contract an installer works from)
+- Handle hardware on the opening edge of operating panels
+- Product artwork is missing for `slider-xox`, `patio-xo`, `patio-ox` and `french`;
+  cards without an image fall back to text rather than a broken-image icon
+
+- Signature capture UI (`customers.signatureSvg` is read by the contract PDF but
+  nothing writes it yet)
+- Per-customer contract disclaimer editing (the copy-on-create works; there is no
+  screen to edit them afterwards)
+- Representative/user management screen (accounts are DB-only today)
+- Window reorder is implemented server-side (`reorderWindows`) but the table's drag
+  handle is not wired to it
+- No migration history — the schema is applied with `db:push`. Worth adopting
+  `drizzle-kit generate` before there is production data to protect
+- Admin screens still do a full `window.location.reload()` after each mutation
+  instead of `router.invalidate()`
+
+### Frame Designer
+
+The configurator's Design step (`components/configurator/window-designer.tsx`) lets a
+rep click a panel, split it horizontally or vertically, and set how each panel
+operates — transoms, sidelites and anything the flat operation codes cannot express.
+
+The unit is stored as a recursive section tree in `windows.design` (jsonb), not as an
+image. `src/lib/window-design.ts` owns the tree and turns it into flat geometry; two
+renderers consume that one layout:
+
+- `components/configurator/window-designer.tsx` — react-konva, on screen
+- `components/pdf/window-drawing.tsx` — `@react-pdf` SVG primitives, on the estimate
+  and contract line items
+
+Because the PDF draws vector from the same geometry, the printed drawing always
+matches what was configured, stays sharp at any size, and needs no stored bitmap.
+`design` is nullable: rows created before the designer fall back to
+`designFromOperationType(productConfig.operationType)`, so older windows still draw.
+
+Sections store **proportions, not pixels**. Unit dimensions come from the Size step
+and can be edited later on the windows table, so a design has to reflow when a unit
+goes from 36" to 72" rather than being baked to the size it was drawn at.
+
+An operating panel carries its own sash frame around its glass (`LaidOutLeaf.glass`);
+a fixed lite is glazed straight into the frame. That difference is what makes an
+elevation readable without reading the labels.
+
+**Operation codes** are read from the outside, left to right: **X moves, O is
+stationary**. Canonical set: `XO`, `OX`, `XOX`, `PW` (picture), `CR`/`CL` (casement,
+hinged right/left), `AWN` (awning). `PIC`, `AW`, `SH`, `DH` and `HOP` are accepted as
+aliases for rows seeded before the vocabulary settled.
+
+> The wizard previously labelled these backwards ("X = fixed"). The giveaway was
+> French Door, stored as `XX` — under the inverted reading, a french door whose
+> panels are both fixed shut.
+
+### Branding
+
+`src/lib/brand.ts` holds the palette (sampled from `public/logo.png`), the company
+details and the logo path. The estimate and contract share `components/pdf/letterhead.tsx`.
+
+`BRAND.logoSrc` is a URL because these documents are generated in the browser. A
+server-side renderer resolves it against the filesystem instead — set `PDF_LOGO_PATH`
+to an absolute path there. Setting it to null falls back to a typographic wordmark;
+@react-pdf has no error boundary for images, so a broken path fails the whole document.
+
+**Swing indicators.** `SWING_APEX` in `lib/window-design.ts` decides whether the
+casement/awning/hopper mark points at the hinge or at the edge that moves. It is one
+constant because an awning is a casement rotated a quarter turn, so the two must agree.
+Set to `'hinge'`, matching Windows Hawaii practice.
+
+### Security Model
+
+Identity is derived from the session cookie **on the server**, never from the request
+body. Server functions attach one of two middlewares from `src/server/middleware/auth.ts`:
+
+- `authMiddleware` — requires a signed-in representative, injects `context.session`
+- `adminMiddleware` — additionally requires `role === 'admin'`
+
+Customer-scoped access goes through `assertCustomerAccess` / `assertWindowAccess` in
+`src/server/access.ts`: representatives reach only their own customers, admins reach
+all. A missing record and a forbidden record return the same error, so a rep cannot
+probe for the existence of another rep's customers.
+
+Sessions are rows in the `sessions` table keyed by a 256-bit random cookie value, and
+the role is re-read from the representative row on every request — so deactivating or
+demoting an account takes effect immediately rather than at next login.
+
+Prices are always recomputed server-side from the factor tables on save. The
+configurator's live estimate is a preview only; the cart lives in `localStorage` and
+is fully editable by the user, so it is never trusted as the figure of record.
 
 ### Database Schema
 
@@ -72,13 +173,23 @@ app/
 
 ### Pricing Logic
 
+All of this lives in exactly one place — `src/lib/pricing.ts` — and is covered by
+`src/lib/pricing.test.ts`. Do not reimplement it in a component; the configurator and
+the contract PDF must never be able to disagree about a number.
+
 ```zsh
 windowPrice = (height + width) × (brandFactor + frameFactor + colorFactor + glassFactor + gridFactor)
 subtotal = sum(window prices)
 afterDiscount = subtotal × (1 - customerDiscount%)
-taxAmount = afterDiscount × 0.04712  // Hawaii tax
+taxAmount = afterDiscount × 0.04712  // Hawaii GET, Oahu rate
 total = afterDiscount + taxAmount
 ```
+
+Factors are **additive dollars per linear inch**, not multipliers. The brand carries
+the base rate (~1.25) and everything else is an adjustment (0.05, 0.15, …). An option
+the user has not selected contributes **zero**, matching the column defaults in the
+schema. A line item's `manualPrice`, when set, always wins over `calculatedPrice` —
+including an explicit `0`, so a comped item stays comped.
 
 ### Commands
 
@@ -87,6 +198,7 @@ cd app
 
 # Development
 pnpm dev                # Start dev server on port 3000
+pnpm test               # Run the unit tests
 
 # Database
 pnpm db:generate        # Generate migrations from schema
@@ -98,6 +210,26 @@ pnpm db:seed            # Seed initial data
 pnpm build
 pnpm preview
 ```
+
+### Gotchas
+
+**Pin `nitro`, never float it.** `package.json` previously carried
+`"nitro": "npm:nitro-nightly@latest"`. The nightly it resolved to dropped the
+`content-type` header from every server-function response, so the client transport
+rejected all of them with `Invariant failed: expected content-type header to be set` —
+an error that names nothing related to the actual cause and makes the app look like it
+has an auth or database problem. It is now pinned to an exact nightly. If server
+functions start failing inexplicably after a dependency bump, suspect this first.
+
+**`POSTGRES_PASSWORD` only applies when the volume is first created.** Changing
+`DB_PASSWORD` in `.env` later does nothing to an existing volume, and connections then
+fail with `28P01` from outside Docker while `docker exec psql` still works — because
+`pg_hba.conf` trusts `127.0.0.1` but requires `scram-sha-256` for everything else. Fix
+with `ALTER ROLE windows_hawaii WITH PASSWORD '…'`, not by recreating the volume.
+
+**Existing password hashes are `$2y$`,** carried over from the PHP app rather than
+generated by `src/db/seed.ts` (the seed uses `onConflictDoNothing`, so it never
+overwrote them). bcryptjs verifies `$2y$` correctly, so the original passwords work.
 
 ### Philosophy
 

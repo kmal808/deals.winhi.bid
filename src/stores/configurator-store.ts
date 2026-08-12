@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { calculateUnitPrice } from '@/lib/pricing'
+import { designFromOperationType, type UnitDesign } from '@/lib/window-design'
 
 export interface WindowConfig {
   id: string
@@ -25,6 +27,8 @@ export interface WindowConfig {
   gridSizeId: number | null
   gridSizeName: string | null
   noGrid: boolean
+  /** Section tree from the frame designer. */
+  design: UnitDesign | null
   calculatedPrice: number
 }
 
@@ -37,6 +41,7 @@ export type WizardStep =
   | 'color'
   | 'glass'
   | 'grids'
+  | 'design'
   | 'review'
 
 const STEP_ORDER: WizardStep[] = [
@@ -48,6 +53,7 @@ const STEP_ORDER: WizardStep[] = [
   'color',
   'glass',
   'grids',
+  'design',
   'review',
 ]
 
@@ -64,7 +70,7 @@ interface ConfiguratorState {
   pricingFactors: {
     brands: Array<{ id: number; name: string; factor: string }>
     frameTypes: Array<{ id: number; name: string; factor: string }>
-    frameColors: Array<{ id: number; name: string; hexColor: string; factor: string }>
+    frameColors: Array<{ id: number; name: string; hexColor: string | null; factor: string }>
     glassTypes: Array<{ id: number; name: string; factor: string; imagePath: string | null }>
     gridStyles: Array<{ id: number; name: string; factor: string; imagePath: string | null }>
     gridSizes: Array<{ id: number; size: string }>
@@ -73,7 +79,7 @@ interface ConfiguratorState {
       name: string
       category: string
       operationType: string | null
-      liteCount: number
+      liteCount: number | null
       imagePath: string | null
     }>
   }
@@ -115,6 +121,7 @@ const initialConfig: Partial<WindowConfig> = {
   gridSizeId: null,
   gridSizeName: null,
   noGrid: false,
+  design: null,
   calculatedPrice: 0,
 }
 
@@ -163,37 +170,25 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
         }))
       },
 
+      /**
+       * Quotes the in-progress configuration for immediate feedback. The server
+       * recomputes this from the same formula when the cart is saved, so this is
+       * a preview — never the figure of record.
+       */
       calculatePrice: () => {
         const { currentConfig, pricingFactors } = get()
         const { width, height, brandId, frameTypeId, frameColorId, glassTypeId, gridStyleId, noGrid } =
           currentConfig
 
-        if (!width || !height) return 0
-
-        // Find factors
-        const brandFactor = parseFloat(
-          pricingFactors.brands.find((b) => b.id === brandId)?.factor || '1.0'
-        )
-        const frameTypeFactor = parseFloat(
-          pricingFactors.frameTypes.find((f) => f.id === frameTypeId)?.factor || '1.0'
-        )
-        const colorFactor = parseFloat(
-          pricingFactors.frameColors.find((c) => c.id === frameColorId)?.factor || '1.0'
-        )
-        const glassFactor = parseFloat(
-          pricingFactors.glassTypes.find((g) => g.id === glassTypeId)?.factor || '1.0'
-        )
-        const gridFactor = noGrid
-          ? 1.0
-          : parseFloat(
-              pricingFactors.gridStyles.find((g) => g.id === gridStyleId)?.factor || '1.0'
-            )
-
-        // Price formula: (height + width) × sum of factors
-        const totalFactor = brandFactor + frameTypeFactor + colorFactor + glassFactor + gridFactor
-        const price = (height + width) * totalFactor
-
-        return Math.round(price * 100) / 100
+        return calculateUnitPrice(width, height, {
+          brand: pricingFactors.brands.find((b) => b.id === brandId)?.factor,
+          frameType: pricingFactors.frameTypes.find((f) => f.id === frameTypeId)?.factor,
+          frameColor: pricingFactors.frameColors.find((c) => c.id === frameColorId)?.factor,
+          glassType: pricingFactors.glassTypes.find((g) => g.id === glassTypeId)?.factor,
+          gridStyle: noGrid
+            ? null
+            : pricingFactors.gridStyles.find((g) => g.id === gridStyleId)?.factor,
+        })
       },
 
       addToCart: () => {
@@ -225,6 +220,13 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
           gridSizeId: currentConfig.gridSizeId || null,
           gridSizeName: currentConfig.gridSizeName || null,
           noGrid: currentConfig.noGrid || false,
+          // Seeded from the operation code when the designer was never opened.
+          design:
+            currentConfig.design ??
+            designFromOperationType(
+              currentConfig.operationType,
+              currentConfig.category || 'window'
+            ),
           calculatedPrice: calculatePrice(),
         }
 
@@ -281,5 +283,6 @@ export const STEPS: { key: WizardStep; label: string; description: string }[] = 
   { key: 'color', label: 'Color', description: 'Frame color' },
   { key: 'glass', label: 'Glass', description: 'Glass type' },
   { key: 'grids', label: 'Grids', description: 'Grid pattern' },
+  { key: 'design', label: 'Design', description: 'Frame layout' },
   { key: 'review', label: 'Review', description: 'Summary' },
 ]

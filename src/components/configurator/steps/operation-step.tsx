@@ -4,15 +4,23 @@ import { OptionCard, OptionGrid } from '../option-card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+/**
+ * Fenestration convention, read from the OUTSIDE, left to right:
+ * X is a sash that moves, O is a sash that is stationary.
+ *
+ * These labels were previously inverted. The giveaway is French Door, which is
+ * stored as `XX` with two lites — under the inverted reading that described a
+ * french door whose panels are both fixed shut.
+ */
 const OPERATION_TYPES = [
-  { value: 'X', label: 'Single Fixed', description: 'Non-operable panel' },
-  { value: 'O', label: 'Single Operating', description: 'Opens/closes' },
-  { value: 'XO', label: 'XO', description: 'Fixed left, operating right' },
-  { value: 'OX', label: 'OX', description: 'Operating left, fixed right' },
-  { value: 'XX', label: 'XX (Picture)', description: 'Both panels fixed' },
-  { value: 'OO', label: 'OO', description: 'Both panels operate' },
-  { value: 'XOX', label: 'XOX', description: 'Fixed-Operating-Fixed' },
-  { value: 'OXO', label: 'OXO', description: 'Operating-Fixed-Operating' },
+  { value: 'O', label: 'Single Fixed', description: 'Non-operable panel' },
+  { value: 'X', label: 'Single Operating', description: 'Opens/closes' },
+  { value: 'XO', label: 'XO', description: 'Operating left, fixed right' },
+  { value: 'OX', label: 'OX', description: 'Fixed left, operating right' },
+  { value: 'OO', label: 'OO (Picture)', description: 'Both panels fixed' },
+  { value: 'XX', label: 'XX', description: 'Both panels operate' },
+  { value: 'XOX', label: 'XOX', description: 'Operating-Fixed-Operating' },
+  { value: 'OXO', label: 'OXO', description: 'Fixed-Operating-Fixed' },
 ]
 
 export function OperationStep() {
@@ -28,7 +36,7 @@ export function OperationStep() {
   return (
     <StepWrapper
       title="Select Operation"
-      description="Choose how the panels operate (X = fixed, O = operating)"
+      description="Viewed from the outside, left to right (X = operating, O = fixed)"
       canContinue={!!currentConfig.operationType}
     >
       <div className="space-y-4">

@@ -8,8 +8,10 @@ import {
   boolean,
   timestamp,
   pgEnum,
+  jsonb,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+import type { UnitDesign } from '@/lib/window-design'
 
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['admin', 'representative'])
@@ -169,6 +171,11 @@ export const windows = pgTable('windows', {
   // Options
   lowE: boolean('low_e').default(true),
   isDoor: boolean('is_door').default(false),
+
+  // Section tree from the frame designer (see lib/window-design.ts). Null means
+  // the unit predates the designer; callers fall back to the product config's
+  // operation type, so old rows still draw.
+  design: jsonb('design').$type<UnitDesign>(),
 
   // Pricing
   calculatedPrice: decimal('calculated_price', { precision: 10, scale: 2 }),
