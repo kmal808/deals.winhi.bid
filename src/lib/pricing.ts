@@ -118,6 +118,60 @@ export function lineItemPrice(item: PricedLineItem): number {
   return toNumber(item.calculatedPrice)
 }
 
+/** A line with enough information to work out its floor price. */
+export interface ParLineItem extends PricedLineItem {
+  width?: number | string | null
+  height?: number | string | null
+  /** The brand's par rate. Absent means no floor is recorded for this line. */
+  parFactor?: number | string | null
+}
+
+export interface DiscountCeiling {
+  /** Sum of every line's floor price. */
+  parTotal: number
+  /** Sum of every line's quoted price, before discount. */
+  listTotal: number
+  /**
+   * The largest discount that still leaves the quote at or above par.
+   *
+   * Quotes are written at about twice par, so this usually lands near 50%.
+   */
+  maxDiscountPercent: number
+}
+
+/**
+ * Works out how much room a quote has left to give away.
+ *
+ * Par is the floor a line is not sold below. Because a quote is written at a
+ * multiple of par and haggled back down toward it, the discount a rep can offer
+ * is bounded rather than open-ended — a rule that has until now lived only in
+ * the reps' heads.
+ *
+ * Lines with no par recorded contribute no floor, so they never restrict the
+ * ceiling.
+ */
+export function calculateDiscountCeiling(items: ParLineItem[] | null | undefined): DiscountCeiling {
+  let parTotal = 0
+  let listTotal = 0
+
+  for (const item of items ?? []) {
+    listTotal += lineItemPrice(item)
+
+    const par = toNumber(item.parFactor)
+    if (par > 0) {
+      parTotal += unitedInches(item.width, item.height) * par
+    }
+  }
+
+  parTotal = roundCents(parTotal)
+  listTotal = roundCents(listTotal)
+
+  const maxDiscountPercent =
+    listTotal > 0 ? Math.max(0, Math.round((1 - parTotal / listTotal) * 10000) / 100) : 0
+
+  return { parTotal, listTotal, maxDiscountPercent }
+}
+
 export interface OrderTotals {
   itemsTotal: number
   discountPercent: number

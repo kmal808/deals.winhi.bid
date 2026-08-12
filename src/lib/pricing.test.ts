@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_DOWN_PAYMENT_RATE,
   TAX_RATE,
+  calculateDiscountCeiling,
   calculateOrderTotals,
   calculateUnitPrice,
   formatCurrency,
@@ -239,5 +240,58 @@ describe('per-line discounts and the tax base', () => {
     })
     expect(totals.discountAmount).toBe(10)
     expect(totals.subtotal).toBe(90)
+  })
+})
+
+describe('calculateDiscountCeiling', () => {
+  // A unit quoted at twice par: par 16 per united inch, quoted at 32.
+  const line = (ui: number) => ({
+    width: ui / 2,
+    height: ui / 2,
+    calculatedPrice: String(ui * 32),
+    manualPrice: null,
+    parFactor: '16',
+  })
+
+  it('allows exactly half off when a quote is written at twice par', () => {
+    const ceiling = calculateDiscountCeiling([line(100)])
+    expect(ceiling.listTotal).toBe(3200)
+    expect(ceiling.parTotal).toBe(1600)
+    expect(ceiling.maxDiscountPercent).toBe(50)
+  })
+
+  it('leaves room for the discounts reps actually give', () => {
+    // 30% and 40% both sit inside a 50% ceiling; 60% would not.
+    const { maxDiscountPercent } = calculateDiscountCeiling([line(94), line(119)])
+    expect(maxDiscountPercent).toBe(50)
+    expect(30).toBeLessThan(maxDiscountPercent)
+    expect(40).toBeLessThan(maxDiscountPercent)
+    expect(60).toBeGreaterThan(maxDiscountPercent)
+  })
+
+  it('tightens the ceiling when a line is quoted nearer its floor', () => {
+    const thin = { width: 50, height: 50, calculatedPrice: '2000', manualPrice: null, parFactor: '16' }
+    // 100 united inches at par 16 is a 1600 floor against a 2000 quote.
+    expect(calculateDiscountCeiling([thin]).maxDiscountPercent).toBe(20)
+  })
+
+  it('does not let a line without a recorded par restrict the ceiling', () => {
+    const ceiling = calculateDiscountCeiling([
+      line(100),
+      { width: 50, height: 50, calculatedPrice: '1000', manualPrice: null },
+    ])
+    expect(ceiling.parTotal).toBe(1600)
+    expect(ceiling.maxDiscountPercent).toBeGreaterThan(50)
+  })
+
+  it('is zero-safe for an empty quote', () => {
+    expect(calculateDiscountCeiling([]).maxDiscountPercent).toBe(0)
+    expect(calculateDiscountCeiling(null).parTotal).toBe(0)
+  })
+
+  it('honours a manual override when measuring the room left', () => {
+    const discounted = { ...line(100), manualPrice: '1800' }
+    // Quoted down to 1800 against a 1600 floor leaves very little room.
+    expect(calculateDiscountCeiling([discounted]).maxDiscountPercent).toBeCloseTo(11.11, 1)
   })
 })

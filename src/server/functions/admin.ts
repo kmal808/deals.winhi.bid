@@ -37,21 +37,32 @@ export const listBrands = createServerFn()
 
 export const createBrand = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ name, factor: factor.optional() }))
+  .inputValidator(z.object({ name, factor: factor.optional(), parFactor: factor.optional() }))
   .handler(async ({ data }) => {
     const { getDb } = await import('@/lib/db')
     const { brands } = await import('@/db/schema')
     const db = await getDb()
     const [brand] = await db
       .insert(brands)
-      .values({ name: data.name, factor: data.factor ?? BRAND_DEFAULT_FACTOR })
+      .values({
+        name: data.name,
+        factor: data.factor ?? BRAND_DEFAULT_FACTOR,
+        parFactor: data.parFactor ?? null,
+      })
       .returning()
     return brand
   })
 
 export const updateBrand = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ id: z.number().int().positive(), name, factor: factor.optional() }))
+  .inputValidator(
+    z.object({
+      id: z.number().int().positive(),
+      name,
+      factor: factor.optional(),
+      parFactor: factor.optional(),
+    })
+  )
   .handler(async ({ data }) => {
     const { getDb } = await import('@/lib/db')
     const { brands } = await import('@/db/schema')
@@ -59,7 +70,11 @@ export const updateBrand = createServerFn({ method: 'POST' })
     const db = await getDb()
     const [brand] = await db
       .update(brands)
-      .set({ name: data.name, ...(data.factor !== undefined ? { factor: data.factor } : {}) })
+      .set({
+        name: data.name,
+        ...(data.factor !== undefined ? { factor: data.factor } : {}),
+        ...(data.parFactor !== undefined ? { parFactor: data.parFactor } : {}),
+      })
       .where(eq(brands.id, data.id))
       .returning()
     return brand

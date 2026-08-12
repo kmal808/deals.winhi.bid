@@ -78,7 +78,19 @@ export const customers = pgTable('customers', {
 export const brands = pgTable('brands', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull().unique(),
+  /** The rate a unit is quoted at, before any discount. */
   factor: decimal('factor', { precision: 8, scale: 4 }).notNull(),
+  /**
+   * Par — the floor rate, below which a line is not sold.
+   *
+   * Quotes are written at roughly twice par and discounted back toward it, so
+   * the discount a rep can offer is bounded by (1 - par / factor). Null means
+   * no floor is recorded and no ceiling is enforced.
+   *
+   * Internal margin information: it belongs on the rep's screens and never on
+   * a customer's estimate or contract.
+   */
+  parFactor: decimal('par_factor', { precision: 8, scale: 4 }),
   active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').default(0),
 })

@@ -20,6 +20,7 @@ interface Brand {
   id: number
   name: string
   factor: string
+  parFactor: string | null
 }
 
 export const Route = createFileRoute('/_protected/admin/brands')({
@@ -38,8 +39,23 @@ const columns = [
     cell: (info) => <span className="font-medium">{info.getValue()}</span>,
   }),
   columnHelper.accessor('factor', {
-    header: 'Price Factor',
+    header: 'Quoted Rate',
     cell: (info) => <span className="text-gray-600">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('parFactor', {
+    header: 'Par (floor)',
+    cell: (info) => {
+      const par = info.getValue()
+      if (!par) return <span className="text-gray-400">—</span>
+      const list = parseFloat(info.row.original.factor)
+      const room = list > 0 ? Math.max(0, (1 - parseFloat(par) / list) * 100) : 0
+      return (
+        <span className="text-gray-600">
+          {par}
+          <span className="ml-2 text-xs text-gray-400">max {room.toFixed(0)}% off</span>
+        </span>
+      )
+    },
   }),
 ]
 
@@ -80,9 +96,11 @@ function BrandsPage() {
     setIsSubmitting(true)
 
     const formData = new FormData(e.currentTarget)
+    const parFactor = (formData.get('parFactor') as string)?.trim()
     const data = {
       name: formData.get('name') as string,
       factor: formData.get('factor') as string,
+      ...(parFactor ? { parFactor } : {}),
     }
 
     try {
@@ -159,8 +177,25 @@ function BrandsPage() {
                   placeholder="1.0"
                 />
                 <p className="text-xs text-gray-500">
-                  Dollars per linear inch. Added to the frame, colour, glass and grid
+                  Dollars per united inch. Added to the frame, colour, glass and grid
                   factors, then multiplied by (width + height).
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="parFactor">Par (floor rate)</Label>
+                <Input
+                  id="parFactor"
+                  name="parFactor"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={editingBrand?.parFactor || ''}
+                  placeholder="e.g. 16"
+                />
+                <p className="text-xs text-gray-500">
+                  The lowest rate this brand is sold at. Quotes are written above par and
+                  discounted back toward it, so this sets how much a rep can give away.
+                  Internal only — it never appears on an estimate or contract.
                 </p>
               </div>
             </DialogBody>

@@ -9,7 +9,12 @@ import { ArrowLeft, Plus, FileText, FileCheck, Pencil, Save, X, Trash2 } from 'l
 import { getCustomer, updateCustomer, deleteCustomer } from '@/server/functions/customers'
 import { getSession } from '@/server/functions/auth'
 import { WindowsTable } from '@/components/windows-table'
-import { calculateOrderTotals, formatCurrency, TAX_RATE } from '@/lib/pricing'
+import {
+  calculateDiscountCeiling,
+  calculateOrderTotals,
+  formatCurrency,
+  TAX_RATE,
+} from '@/lib/pricing'
 
 export const Route = createFileRoute('/_protected/customers/$customerId/')({
   loader: async ({ params }) => {
@@ -90,6 +95,22 @@ function CustomerDetailPage() {
     downPaymentAmount: customer.downPaymentAmount,
   })
   const discountPercent = totals.discountPercent
+
+  // Par is the floor a line is not sold below. Quotes are written above it and
+  // discounted back toward it, so this is the room the rep has left to give away.
+  // Internal only: it must not reach the estimate or the contract.
+  const ceiling = calculateDiscountCeiling(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (customer.windows ?? []).map((w: any) => ({
+      calculatedPrice: w.calculatedPrice,
+      manualPrice: w.manualPrice,
+      width: w.width,
+      height: w.height,
+      parFactor: w.brand?.parFactor,
+    }))
+  )
+  const roomLeft = Math.max(0, ceiling.maxDiscountPercent - discountPercent)
+  const belowPar = ceiling.parTotal > 0 && totals.subtotal < ceiling.parTotal
 
   return (
     <div className="space-y-6">
@@ -309,6 +330,31 @@ function CustomerDetailPage() {
                 <span className="text-gray-500">Subtotal</span>
                 <span>{formatCurrency(totals.subtotal)}</span>
               </div>
+              {ceiling.parTotal > 0 && (
+                <div
+                  className={
+                    belowPar
+                      ? 'rounded-md bg-red-50 px-3 py-2 text-xs text-red-700'
+                      : 'rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600'
+                  }
+                >
+                  <div className="flex justify-between">
+                    <span>Par (floor)</span>
+                    <span>{formatCurrency(ceiling.parTotal)}</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span>{belowPar ? 'Below par' : 'Discount room left'}</span>
+                    <span>
+                      {belowPar
+                        ? `-${formatCurrency(ceiling.parTotal - totals.subtotal)}`
+                        : `${roomLeft.toFixed(1)}%`}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[10px] text-gray-400">
+                    Internal only — not shown on the estimate or contract.
+                  </p>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Tax ({(TAX_RATE * 100).toFixed(3)}%)</span>
                 <span>{formatCurrency(totals.taxAmount)}</span>
