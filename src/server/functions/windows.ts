@@ -83,14 +83,14 @@ export const updateWindow = createServerFn({ method: 'POST' })
 
     // Recomputed from the factor tables on every edit, so changing a dimension
     // or an option can never leave a stale price behind.
-    const calculatedPrice = await computeUnitPrice(next)
+    const calculatedPrice = await computeUnitPrice({ ...next, isDoor: existing.isDoor ?? false })
 
     const db = await getDb()
     const [updated] = await db
       .update(windows)
       .set({
         ...next,
-        calculatedPrice: String(calculatedPrice),
+        calculatedPrice: calculatedPrice === null ? existing.calculatedPrice : String(calculatedPrice),
         manualPrice:
           fields.manualPrice === undefined
             ? existing.manualPrice

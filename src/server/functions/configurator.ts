@@ -110,6 +110,7 @@ export const saveCartToWindows = createServerFn({ method: 'POST' })
       const calculatedPrice = await computeUnitPrice({
         width: item.width,
         height: item.height,
+        isDoor: item.category === 'door',
         brandId: item.brandId,
         frameTypeId: item.frameTypeId,
         frameColorId: item.frameColorId,
@@ -131,7 +132,7 @@ export const saveCartToWindows = createServerFn({ method: 'POST' })
         gridSizeId: item.noGrid ? null : (item.gridSizeId ?? null),
         isDoor: item.category === 'door',
         design: (item.design as never) ?? null,
-        calculatedPrice: String(calculatedPrice),
+        calculatedPrice: calculatedPrice === null ? null : String(calculatedPrice),
         sortOrder: nextSortOrder++,
       })
     }
