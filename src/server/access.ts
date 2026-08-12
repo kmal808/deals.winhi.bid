@@ -30,6 +30,29 @@ export async function assertCustomerAccess(customerId: number, session: SessionD
   return customer
 }
 
+/** Same rule, resolved from a contract disclaimer via its parent customer. */
+export async function assertDisclaimerAccess(disclaimerId: number, session: SessionData) {
+  const { getDb } = await import('@/lib/db')
+  const { contractDisclaimers } = await import('@/db/schema')
+  const { eq } = await import('drizzle-orm')
+
+  const db = await getDb()
+  const row = await db.query.contractDisclaimers.findFirst({
+    where: eq(contractDisclaimers.id, disclaimerId),
+    with: { customer: true },
+  })
+
+  if (!row) {
+    throw new Error('Disclaimer not found')
+  }
+
+  if (session.role !== 'admin' && row.customer.representativeId !== session.userId) {
+    throw new Error('Disclaimer not found')
+  }
+
+  return row
+}
+
 /** Same rule, resolved from a window id via its parent customer. */
 export async function assertWindowAccess(windowId: number, session: SessionData) {
   const { getDb } = await import('@/lib/db')

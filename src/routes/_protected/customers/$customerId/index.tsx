@@ -9,6 +9,7 @@ import { ArrowLeft, Plus, FileText, FileCheck, Pencil, Save, X, Trash2 } from 'l
 import { getCustomer, updateCustomer, deleteCustomer } from '@/server/functions/customers'
 import { getSession } from '@/server/functions/auth'
 import { WindowsTable } from '@/components/windows-table'
+import { ContractTerms } from '@/components/contract-terms'
 import {
   calculateDiscountCeiling,
   calculateOrderTotals,
@@ -307,6 +308,13 @@ function CustomerDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          <ContractTerms
+            customerId={customer.id}
+            terms={customer.contractDisclaimers ?? []}
+            customTerms={customer.customTerms}
+            onChange={() => router.invalidate()}
+          />
         </div>
 
         {/* Pricing Summary Sidebar */}

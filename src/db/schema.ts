@@ -67,6 +67,15 @@ export const customers = pgTable('customers', {
   estimateEndDate: varchar('estimate_end_date', { length: 50 }),
   noGrid: boolean('no_grid').default(false),
 
+  /**
+   * The rep's own terms for this job.
+   *
+   * The boilerplate in `contractDisclaimers` is admin-managed and reps do not
+   * edit it — a clause that protects the company should not be rewritable by
+   * whoever is closing today. Anything job-specific goes here instead.
+   */
+  customTerms: text('custom_terms'),
+
   // Signature (SVG data)
   signatureSvg: text('signature_svg'),
 

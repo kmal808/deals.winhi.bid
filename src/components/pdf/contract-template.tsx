@@ -285,6 +285,7 @@ interface Customer {
   email: string | null
   discountPercent: string | null
   downPaymentAmount: string | null
+  customTerms: string | null
   signatureSvg: string | null
   windows: Window[]
   contractDisclaimers: Disclaimer[]
@@ -538,6 +539,17 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
               </Text>
             </View>
           ))}
+
+          {/* The rep's own terms for this job, numbered on from the boilerplate
+              so the customer reads one continuous list. */}
+          {customer.customTerms ? (
+            <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+              <Text style={{ fontSize: 8, marginRight: 6 }}>
+                {customer.contractDisclaimers.length + 1}.
+              </Text>
+              <Text style={[styles.disclaimer, { paddingLeft: 0 }]}>{customer.customTerms}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Agreement Text */}

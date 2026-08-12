@@ -171,6 +171,7 @@ const customerUpdateFields = customerFields.partial().extend({
   estimateStartDate: z.string().optional().nullable(),
   estimateEndDate: z.string().optional().nullable(),
   noGrid: z.boolean().optional(),
+  customTerms: z.string().max(5000).optional().nullable(),
   signatureSvg: z.string().optional().nullable(),
 })
 
@@ -217,6 +218,8 @@ export const updateCustomer = createServerFn({ method: 'POST' })
         estimateStartDate: fields.estimateStartDate ?? existing.estimateStartDate,
         estimateEndDate: fields.estimateEndDate ?? existing.estimateEndDate,
         noGrid: fields.noGrid ?? existing.noGrid,
+        customTerms:
+          fields.customTerms !== undefined ? nullIfBlank(fields.customTerms) : existing.customTerms,
         signatureSvg: fields.signatureSvg ?? existing.signatureSvg,
         updatedAt: new Date(),
       })
