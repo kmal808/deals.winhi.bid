@@ -1,7 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import { BRAND } from '@/lib/brand'
 import { Letterhead } from './letterhead'
-import { calculateOrderTotals, lineItemPrice } from '@/lib/pricing'
+import { calculateOrderTotals, formatCurrency, lineItemPrice } from '@/lib/pricing'
 import { designFromOperationType, type UnitDesign } from '@/lib/window-design'
 import { WindowDrawing } from './window-drawing'
 
@@ -265,7 +265,7 @@ export function EstimateTemplate({ customer, estimateDate, validUntil }: Estimat
                   {[window.frameColor?.name, window.glassType?.name].filter(Boolean).join(', ') || '—'}
                 </Text>
                 <Text style={styles.col5}>
-                  ${lineItemPrice(window).toFixed(2)}
+                  {formatCurrency(lineItemPrice(window))}
                 </Text>
               </View>
             ))}
@@ -276,25 +276,25 @@ export function EstimateTemplate({ customer, estimateDate, validUntil }: Estimat
         <View style={styles.totalsSection}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal:</Text>
-            <Text style={styles.totalValue}>${windowsTotal.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(windowsTotal)}</Text>
           </View>
           {discountPercent > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Discount ({discountPercent}%):</Text>
-              <Text style={styles.totalValue}>-${discountAmount.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>-{formatCurrency(discountAmount)}</Text>
             </View>
           )}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>After Discount:</Text>
-            <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Tax (4.712%):</Text>
-            <Text style={styles.totalValue}>${taxAmount.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(taxAmount)}</Text>
           </View>
           <View style={[styles.totalRow, styles.grandTotal]}>
             <Text style={styles.grandTotalLabel}>Total:</Text>
-            <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+            <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
           </View>
         </View>
 

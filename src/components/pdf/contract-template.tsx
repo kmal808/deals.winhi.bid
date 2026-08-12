@@ -1,7 +1,13 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import { BRAND } from '@/lib/brand'
 import { Letterhead } from './letterhead'
-import { calculateOrderTotals } from '@/lib/pricing'
+import {
+  calculateOrderTotals,
+  formatCurrency,
+  lineItemPrice,
+  ratePerUnitedInch,
+  unitedInches,
+} from '@/lib/pricing'
 import { designFromOperationType, type UnitDesign } from '@/lib/window-design'
 import { WindowDrawing } from './window-drawing'
 
@@ -94,18 +100,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   // Spec matrix, matching the column set the shop already works from.
-  cLoc: { width: '13%' },
-  cBrand: { width: '8%' },
-  cConfig: { width: '7%' },
-  cPic: { width: '10%' },
-  cFrame: { width: '8%' },
-  cW: { width: '6%', textAlign: 'right' },
-  cH: { width: '6%', textAlign: 'right' },
-  cColor: { width: '9%' },
-  cLowE: { width: '5%', textAlign: 'center' },
-  cGlass: { width: '9%' },
-  cGrid: { width: '8%' },
-  cNotes: { width: '11%' },
+  // Line item: united inches, drawing, description block, extended price.
+  liQty: { width: '8%' },
+  liQtyNum: { fontSize: 11, fontWeight: 'bold', color: BRAND.black },
+  liQtyLabel: { fontSize: 6, color: BRAND.muted },
+  liPic: { width: '20%', paddingRight: 8 },
+  liDesc: { width: '55%', paddingRight: 8 },
+  liExt: { width: '17%', textAlign: 'right' },
+  liTitle: { fontSize: 10, fontWeight: 'bold', color: BRAND.black, marginBottom: 2 },
+  liRate: { fontSize: 8, color: BRAND.orange, marginBottom: 3 },
+  liSpec: { fontSize: 8, color: BRAND.ink, marginBottom: 1 },
+  liMeta: { fontSize: 8, color: BRAND.muted },
+  liNote: { fontSize: 8, color: BRAND.orangeDark, marginTop: 2 },
+  liExtValue: { fontSize: 11, fontWeight: 'bold', color: BRAND.black },
+  liRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 0.5,
+    borderBottomColor: BRAND.hairline,
+    paddingVertical: 8,
+  },
   colTotalLabel: { width: '85%', textAlign: 'right' },
   col5: { width: '15%', textAlign: 'right' },
   viewNote: {
@@ -277,6 +290,14 @@ interface ContractTemplateProps {
   contractDate?: string
 }
 
+/** Product names often already end in their configuration code. */
+function productTitle(name?: string | null, code?: string | null): string {
+  const base = name?.trim() || 'Window'
+  const c = code?.trim()
+  if (!c) return base
+  return new RegExp(`\\b${c}\\b`, 'i').test(base) ? base : `${base} ${c}`
+}
+
 export function ContractTemplate({ customer, contractDate }: ContractTemplateProps) {
   const today = contractDate || new Date().toLocaleDateString()
   const contractNumber = `WH-${customer.id.toString().padStart(5, '0')}`
@@ -367,81 +388,107 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
         <Text style={styles.viewNote}>All configurations viewed from the outside, left to right. X = sash that moves, O = sash that is stationary.</Text>
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.cLoc}>Location</Text>
-            <Text style={styles.cBrand}>Brand</Text>
-            <Text style={styles.cConfig}>Config</Text>
-            <Text style={styles.cPic}>Picture</Text>
-            <Text style={styles.cFrame}>Frame</Text>
-            <Text style={styles.cW}>Width</Text>
-            <Text style={styles.cH}>Height</Text>
-            <Text style={styles.cColor}>Color</Text>
-            <Text style={styles.cLowE}>Low E</Text>
-            <Text style={styles.cGlass}>Glass</Text>
-            <Text style={styles.cGrid}>Grid</Text>
-            <Text style={styles.cNotes}>Special Instr.</Text>
+            <Text style={styles.liQty}>Qty</Text>
+            <Text style={styles.liPic}>Drawing</Text>
+            <Text style={styles.liDesc}>Description</Text>
+            <Text style={styles.liExt}>Ext</Text>
           </View>
-          {customer.windows.map((window, index) => (
-            <View
-              key={window.id}
-              style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
-            >
-              <Text style={styles.cLoc}>{window.location}</Text>
-              <Text style={styles.cBrand}>{window.brand?.name || '—'}</Text>
-              <Text style={styles.cConfig}>
-                {window.productConfig?.operationType || '—'}
-              </Text>
-              <View style={styles.cPic}>
-                <WindowDrawing
-                  design={
-                    window.design ??
-                    designFromOperationType(window.productConfig?.operationType)
-                  }
-                  width={parseFloat(window.width) || 36}
-                  height={parseFloat(window.height) || 48}
-                  frameColor={window.frameColor?.hexColor}
-                  boxWidth={44}
-                  boxHeight={44}
-                />
+          {customer.windows.map((window) => {
+            const w = parseFloat(window.width) || 0
+            const h = parseFloat(window.height) || 0
+            const ui = unitedInches(w, h)
+            const rate = ratePerUnitedInch(window, w, h)
+
+            const glassName = window.glassType?.name ?? ''
+            const spec = [
+              window.frameType?.name,
+              glassName || null,
+              // The glass itself is often already a Low-E product; do not say so twice.
+              window.lowE && !/low[- ]?e/i.test(glassName) ? 'Low-E' : null,
+              window.gridStyle && window.gridStyle.name !== 'None'
+                ? [window.gridStyle.name, window.gridSize?.size, 'grid'].filter(Boolean).join(' ')
+                : null,
+            ]
+              .filter(Boolean)
+              .join(', ')
+
+            return (
+              <View key={window.id} style={styles.liRow} wrap={false}>
+                {/* United inches is the quantity every price here is per. */}
+                <View style={styles.liQty}>
+                  <Text style={styles.liQtyNum}>{ui || '—'}</Text>
+                  <Text style={styles.liQtyLabel}>united in.</Text>
+                </View>
+
+                <View style={styles.liPic}>
+                  <WindowDrawing
+                    design={
+                      window.design ??
+                      designFromOperationType(window.productConfig?.operationType)
+                    }
+                    width={w || 36}
+                    height={h || 48}
+                    frameColor={window.frameColor?.hexColor}
+                    boxWidth={96}
+                    boxHeight={80}
+                  />
+                </View>
+
+                <View style={styles.liDesc}>
+                  <Text style={styles.liTitle}>
+                    {productTitle(window.productConfig?.name, window.productConfig?.operationType)}
+                  </Text>
+                  {rate > 0 && (
+                    <Text style={styles.liRate}>
+                      ${rate.toFixed(2)} per united inch × {ui}
+                      {window.manualPrice ? ' (agreed price)' : ''}
+                    </Text>
+                  )}
+                  {spec ? <Text style={styles.liSpec}>{spec}</Text> : null}
+                  <Text style={styles.liMeta}>{window.brand?.name || ''}</Text>
+                  <Text style={styles.liMeta}>{window.location}</Text>
+                  <Text style={styles.liMeta}>
+                    {window.width}" × {window.height}"
+                    {window.frameColor?.name ? ` · ${window.frameColor.name}` : ''}
+                  </Text>
+                  {window.specialInstructions ? (
+                    <Text style={styles.liNote}>{window.specialInstructions}</Text>
+                  ) : null}
+                </View>
+
+                <View style={styles.liExt}>
+                  <Text style={styles.liExtValue}>
+                    {formatCurrency(lineItemPrice(window))}
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.cFrame}>{window.frameType?.name || '—'}</Text>
-              <Text style={styles.cW}>{window.width}"</Text>
-              <Text style={styles.cH}>{window.height}"</Text>
-              <Text style={styles.cColor}>{window.frameColor?.name || '—'}</Text>
-              <Text style={styles.cLowE}>{window.lowE ? 'Y' : 'N'}</Text>
-              <Text style={styles.cGlass}>{window.glassType?.name || '—'}</Text>
-              <Text style={styles.cGrid}>
-                {window.gridStyle && window.gridStyle.name !== 'None'
-                  ? [window.gridStyle.name, window.gridSize?.size].filter(Boolean).join(' ')
-                  : '—'}
-              </Text>
-              <Text style={styles.cNotes}>{window.specialInstructions || ''}</Text>
-            </View>
-          ))}
+            )
+          })}
         </View>
 
         {/* Totals */}
         <View style={styles.totalsBox}>
           <View style={styles.totalRow}>
             <Text>Products & Services:</Text>
-            <Text>${windowsTotal.toFixed(2)}</Text>
+            <Text>{formatCurrency(windowsTotal)}</Text>
           </View>
           {discountPercent > 0 && (
             <View style={styles.totalRow}>
               <Text>Discount ({discountPercent}%):</Text>
-              <Text>-${discountAmount.toFixed(2)}</Text>
+              <Text>-{formatCurrency(discountAmount)}</Text>
             </View>
           )}
           <View style={styles.totalRow}>
             <Text>Subtotal:</Text>
-            <Text>${subtotal.toFixed(2)}</Text>
+            <Text>{formatCurrency(subtotal)}</Text>
           </View>
           <View style={styles.totalRow}>
             <Text>Hawaii GET (4.712%):</Text>
-            <Text>${taxAmount.toFixed(2)}</Text>
+            <Text>{formatCurrency(taxAmount)}</Text>
           </View>
           <View style={[styles.totalRow, styles.grandTotal]}>
             <Text style={styles.grandTotalLabel}>CONTRACT TOTAL:</Text>
-            <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+            <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
           </View>
         </View>
 
@@ -450,11 +497,11 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
           <Text style={styles.paymentTitle}>Payment Terms</Text>
           <View style={styles.paymentRow}>
             <Text>Down Payment (due upon signing):</Text>
-            <Text>${downPayment.toFixed(2)}</Text>
+            <Text>{formatCurrency(downPayment)}</Text>
           </View>
           <View style={styles.paymentRow}>
             <Text>Balance (due upon completion):</Text>
-            <Text>${balance.toFixed(2)}</Text>
+            <Text>{formatCurrency(balance)}</Text>
           </View>
         </View>
 

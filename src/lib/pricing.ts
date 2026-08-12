@@ -58,6 +58,38 @@ export function calculateUnitPrice(
   return roundCents((w + h) * totalFactor)
 }
 
+/**
+ * United inches — width plus height, the trade's unit of size.
+ *
+ * It is the quantity every price here is really per: `(w + h) × Σfactors` is
+ * united inches times a rate. Documents show it so the customer can check the
+ * arithmetic instead of being handed a number.
+ */
+export function unitedInches(
+  width: number | string | null | undefined,
+  height: number | string | null | undefined
+): number {
+  const w = toNumber(width)
+  const h = toNumber(height)
+  if (w <= 0 || h <= 0) return 0
+  return roundCents(w + h)
+}
+
+/**
+ * The effective rate per united inch for a line, derived from what it actually
+ * costs — so a manual override reports the rate it implies rather than the rate
+ * the factors would have produced.
+ */
+export function ratePerUnitedInch(
+  item: PricedLineItem,
+  width: number | string | null | undefined,
+  height: number | string | null | undefined
+): number {
+  const ui = unitedInches(width, height)
+  if (ui <= 0) return 0
+  return Math.round((lineItemPrice(item) / ui) * 100) / 100
+}
+
 /** A saved window/door row, or anything else that carries the two price columns. */
 export interface PricedLineItem {
   calculatedPrice?: number | string | null
@@ -126,5 +158,8 @@ export function calculateOrderTotals(input: {
 }
 
 export function formatCurrency(value: number): string {
-  return `$${value.toFixed(2)}`
+  // Grouped, because a contract total is read by a customer, not a machine.
+  const [whole, cents] = Math.abs(value).toFixed(2).split('.')
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return `${value < 0 ? '-' : ''}$${grouped}.${cents}`
 }

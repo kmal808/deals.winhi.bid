@@ -4,7 +4,10 @@ import {
   TAX_RATE,
   calculateOrderTotals,
   calculateUnitPrice,
+  formatCurrency,
   lineItemPrice,
+  ratePerUnitedInch,
+  unitedInches,
 } from './pricing'
 
 describe('calculateUnitPrice', () => {
@@ -124,5 +127,47 @@ describe('calculateOrderTotals', () => {
       downPayment: 0,
       balanceDue: 0,
     })
+  })
+})
+
+describe('unitedInches', () => {
+  it('is width plus height, the quantity a price is per', () => {
+    // Straight from a competitor's agreement: 59x60 bills as 119 united inches.
+    expect(unitedInches(59, 60)).toBe(119)
+    expect(unitedInches('47', '60')).toBe(107)
+    expect(unitedInches(34, 60)).toBe(94)
+  })
+
+  it('is zero for a unit with no dimensions', () => {
+    expect(unitedInches(0, 48)).toBe(0)
+    expect(unitedInches(null, undefined)).toBe(0)
+  })
+})
+
+describe('ratePerUnitedInch', () => {
+  it('reports the rate the line actually bills at', () => {
+    // 119 united inches at $12.00 comes to $1,428.00.
+    expect(ratePerUnitedInch({ calculatedPrice: '1428.00', manualPrice: null }, 59, 60)).toBe(12)
+  })
+
+  it('derives the rate from a manual override rather than the factors', () => {
+    expect(ratePerUnitedInch({ calculatedPrice: '1428.00', manualPrice: '952.00' }, 59, 60)).toBe(8)
+  })
+
+  it('is zero when the unit has no size to divide by', () => {
+    expect(ratePerUnitedInch({ calculatedPrice: '100', manualPrice: null }, 0, 0)).toBe(0)
+  })
+})
+
+describe('formatCurrency', () => {
+  it('groups thousands', () => {
+    expect(formatCurrency(1128)).toBe('$1,128.00')
+    expect(formatCurrency(1234567.5)).toBe('$1,234,567.50')
+  })
+
+  it('keeps small values and negatives readable', () => {
+    expect(formatCurrency(0)).toBe('$0.00')
+    expect(formatCurrency(999.99)).toBe('$999.99')
+    expect(formatCurrency(-1128)).toBe('-$1,128.00')
   })
 })
