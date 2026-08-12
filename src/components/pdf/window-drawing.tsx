@@ -45,6 +45,8 @@ function SashIndicator({ leaf }: { leaf: LaidOutLeaf }) {
   const inset = Math.min(w, h) * 0.16
   const stroke = INK
   const strokeWidth = 0.6
+  // Out-swinging sashes are drawn solid, in-swinging dashed.
+  const dash = leaf.swing === 'in' ? { strokeDasharray: '2 1.5' } : {}
 
   switch (sash) {
     // Sliders: an arrow along the middle pointing the way the panel travels.
@@ -90,6 +92,7 @@ function SashIndicator({ leaf }: { leaf: LaidOutLeaf }) {
           stroke={stroke}
           strokeWidth={strokeWidth}
           fill="none"
+          {...dash}
         />
       )
     }
@@ -107,6 +110,7 @@ function SashIndicator({ leaf }: { leaf: LaidOutLeaf }) {
           stroke={stroke}
           strokeWidth={strokeWidth}
           fill="none"
+          {...dash}
         />
       )
     }

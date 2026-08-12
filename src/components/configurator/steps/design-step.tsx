@@ -18,8 +18,16 @@ export function DesignStep() {
   const design = useMemo(
     () =>
       currentConfig.design ??
-      designFromOperationType(currentConfig.operationType, currentConfig.category || 'window'),
-    [currentConfig.design, currentConfig.operationType, currentConfig.category]
+      designFromOperationType(currentConfig.operationType, {
+        name: currentConfig.productConfigName,
+        category: currentConfig.category,
+      }),
+    [
+      currentConfig.design,
+      currentConfig.operationType,
+      currentConfig.category,
+      currentConfig.productConfigName,
+    ]
   )
 
   return (

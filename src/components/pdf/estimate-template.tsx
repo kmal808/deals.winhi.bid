@@ -142,7 +142,7 @@ interface Window {
   manualPrice: string | null
   design?: UnitDesign | null
   brand?: { name: string } | null
-  productConfig?: { name: string; operationType?: string | null } | null
+  productConfig?: { name: string; operationType?: string | null; category?: string | null } | null
   frameColor?: { name: string; hexColor?: string | null } | null
   glassType?: { name: string } | null
 }
@@ -246,7 +246,10 @@ export function EstimateTemplate({ customer, estimateDate, validUntil }: Estimat
                   <WindowDrawing
                     design={
                       window.design ??
-                      designFromOperationType(window.productConfig?.operationType)
+                      designFromOperationType(window.productConfig?.operationType, {
+                        name: window.productConfig?.name,
+                        category: window.productConfig?.category,
+                      })
                     }
                     width={parseFloat(window.width) || 36}
                     height={parseFloat(window.height) || 48}

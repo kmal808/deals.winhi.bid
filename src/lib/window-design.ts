@@ -23,10 +23,21 @@ export type SashType =
   | 'hung-single'
   | 'hung-double'
 
+/**
+ * Which way a hinged sash opens, viewed from the outside.
+ *
+ * Drafting convention draws an out-swinging sash solid and an in-swinging one
+ * dashed, so this changes the drawing rather than just the label. Sliding and
+ * fixed panels ignore it.
+ */
+export type SwingDirection = 'out' | 'in'
+
 export interface LeafSection {
   id: string
   kind: 'leaf'
   sash: SashType
+  /** Defaults to 'out' when absent, which is how older rows read. */
+  swing?: SwingDirection
 }
 
 export interface SplitSection {
@@ -77,6 +88,7 @@ export interface Rect {
 export interface LaidOutLeaf extends Rect {
   id: string
   sash: SashType
+  swing: SwingDirection
   operable: boolean
   /**
    * The glazed area. Equal to the section for a fixed lite; inset by the sash
@@ -138,8 +150,12 @@ export function nextSectionId(prefix = 's'): string {
   return `${prefix}${idCounter}`
 }
 
-export function leaf(sash: SashType = 'fixed', id = nextSectionId()): LeafSection {
-  return { id, kind: 'leaf', sash }
+export function leaf(
+  sash: SashType = 'fixed',
+  id = nextSectionId(),
+  swing?: SwingDirection
+): LeafSection {
+  return swing ? { id, kind: 'leaf', sash, swing } : { id, kind: 'leaf', sash }
 }
 
 /**
@@ -148,11 +164,49 @@ export function leaf(sash: SashType = 'fixed', id = nextSectionId()): LeafSectio
  * Each character becomes one section in a left-to-right row. Codes that are not
  * made of X/O (a casement or awning, say) become a single sash of that type.
  */
+export interface OperationContext {
+  /**
+   * The configuration name, e.g. "Sliding Patio XO" or "French Door XX".
+   *
+   * Whether an X panel slides or swings cannot be read from the code alone —
+   * both a sliding patio door and a french door are doors, and both can be XX.
+   * The name is what distinguishes them, which is also where hinge side and
+   * swing direction are recorded.
+   */
+  name?: string | null
+  category?: string | null
+}
+
 export function designFromOperationType(
   operationType: string | null | undefined,
-  category: 'window' | 'door' = 'window'
+  context: OperationContext | 'window' | 'door' = {}
 ): UnitDesign {
+  const ctx: OperationContext =
+    typeof context === 'string' ? { category: context } : context
   const code = (operationType ?? '').trim().toUpperCase()
+  const name = (ctx.name ?? '').toLowerCase()
+
+  // A hinged unit announces itself in its name; everything else with an X/O
+  // code slides. Defaulting the other way would draw every patio slider as a
+  // pair of swinging leaves.
+  const hingedByName = /french|swing|hinge|casement|entry/.test(name)
+
+  /**
+   * Hinge side and swing direction are carried in the configuration code
+   * itself — LHIS is a left-hinged in-swing, RHOS a right-hinged out-swing —
+   * rather than in columns of their own.
+   */
+  const hinged = /^([LR])H(I|O)S$/.exec(code)
+  if (hinged) {
+    return {
+      version: 1,
+      root: leaf(
+        hinged[1] === 'L' ? 'casement-left' : 'casement-right',
+        nextSectionId(),
+        hinged[2] === 'I' ? 'in' : 'out'
+      ),
+    }
+  }
 
   /**
    * Canonical codes: XO, OX, XOX, PW, CR, CL, AWN.
@@ -207,10 +261,19 @@ export function designFromOperationType(
   const children = panels.map((c, index) => {
     if (c === 'O') return leaf('fixed')
 
-    // A door leaf hinges on the jamb nearest it and swings outward from the
-    // centre, so a French door (XX) opens like a pair of shutters.
-    if (category === 'door') {
-      return leaf(index < panels.length / 2 ? 'casement-left' : 'casement-right')
+    // A hinged leaf pivots on the jamb nearest it and swings outward from the
+    // centre, so a french door (XX) opens like a pair of shutters.
+    if (hingedByName) {
+      const swing: SwingDirection | undefined = /in.?swing/.test(name)
+        ? 'in'
+        : /out.?swing/.test(name)
+          ? 'out'
+          : undefined
+      return leaf(
+        index < panels.length / 2 ? 'casement-left' : 'casement-right',
+        nextSectionId(),
+        swing
+      )
     }
 
     return leaf(slidesLeft(index) ? 'slider-left' : 'slider-right')
@@ -247,6 +310,7 @@ function layoutSection(
     leaves.push({
       id: section.id,
       sash: section.sash,
+      swing: section.swing ?? 'out',
       operable,
       ...rect,
       glass: {
@@ -360,11 +424,26 @@ export function splitSection(
   }
 }
 
-export function setSash(design: UnitDesign, id: string, sash: SashType): UnitDesign {
+export function setSash(
+  design: UnitDesign,
+  id: string,
+  sash: SashType,
+  swing?: SwingDirection
+): UnitDesign {
   return {
     ...design,
     root: mapSection(design.root, id, (found) =>
-      found.kind === 'leaf' ? { ...found, sash } : found
+      found.kind === 'leaf' ? { ...found, sash, ...(swing ? { swing } : {}) } : found
+    ),
+  }
+}
+
+/** Flips a hinged sash between opening outward and inward. */
+export function setSwing(design: UnitDesign, id: string, swing: SwingDirection): UnitDesign {
+  return {
+    ...design,
+    root: mapSection(design.root, id, (found) =>
+      found.kind === 'leaf' ? { ...found, swing } : found
     ),
   }
 }

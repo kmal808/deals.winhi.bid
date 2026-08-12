@@ -223,10 +223,10 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
           // Seeded from the operation code when the designer was never opened.
           design:
             currentConfig.design ??
-            designFromOperationType(
-              currentConfig.operationType,
-              currentConfig.category || 'window'
-            ),
+            designFromOperationType(currentConfig.operationType, {
+              name: currentConfig.productConfigName,
+              category: currentConfig.category,
+            }),
           calculatedPrice: calculatePrice(),
         }
 

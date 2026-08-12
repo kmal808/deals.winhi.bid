@@ -9,6 +9,7 @@ import {
   timestamp,
   pgEnum,
   jsonb,
+  unique,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import type { UnitDesign } from '@/lib/window-design'
@@ -132,18 +133,24 @@ export const gridSizes = pgTable('grid_sizes', {
 })
 
 // Product Configurations (window/door types)
-export const productConfigs = pgTable('product_configs', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 100 }).notNull(),
-  category: productCategoryEnum('category').notNull(),
-  operationType: varchar('operation_type', { length: 50 }),
-  liteCount: integer('lite_count').default(1),
-  description: text('description'),
-  imagePath: varchar('image_path', { length: 255 }).notNull(),
-  svgTemplate: text('svg_template'),
-  active: boolean('active').notNull().default(true),
-  sortOrder: integer('sort_order').default(0),
-})
+export const productConfigs = pgTable(
+  'product_configs',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 100 }).notNull(),
+    category: productCategoryEnum('category').notNull(),
+    operationType: varchar('operation_type', { length: 50 }),
+    liteCount: integer('lite_count').default(1),
+    description: text('description'),
+    imagePath: varchar('image_path', { length: 255 }).notNull(),
+    svgTemplate: text('svg_template'),
+    active: boolean('active').notNull().default(true),
+    sortOrder: integer('sort_order').default(0),
+  },
+  // Same reason as disclaimers: without this, re-seeding duplicated every
+  // product configuration and the wizard listed each window type twice.
+  (table) => [unique('product_configs_name_category').on(table.name, table.category)]
+)
 
 // Windows (line items for a customer)
 export const windows = pgTable('windows', {
@@ -194,7 +201,10 @@ export const windows = pgTable('windows', {
 // Disclaimers (global templates)
 export const disclaimers = pgTable('disclaimers', {
   id: serial('id').primaryKey(),
-  description: text('description').notNull(),
+  // Unique so `db:seed` stays idempotent: onConflictDoNothing has nothing to
+  // conflict with unless a constraint exists, and re-seeding duplicated every
+  // term, which then printed twice on the contract.
+  description: text('description').notNull().unique(),
   sortOrder: integer('sort_order').default(0),
   includeByDefault: boolean('include_by_default').default(true),
   active: boolean('active').notNull().default(true),

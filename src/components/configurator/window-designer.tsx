@@ -53,7 +53,13 @@ function SashMark({ leaf }: { leaf: LaidOutLeaf }) {
   if (!leaf.operable || w <= 2 || h <= 2) return null
 
   const inset = Math.min(w, h) * 0.16
-  const common = { stroke: INK, strokeWidth: 1, listening: false as const }
+  // Out-swinging sashes are drawn solid, in-swinging dashed.
+  const common = {
+    stroke: INK,
+    strokeWidth: 1,
+    listening: false as const,
+    ...(leaf.swing === 'in' ? { dash: [3, 2] } : {}),
+  }
 
   switch (sash) {
     case 'slider-left':

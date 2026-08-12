@@ -49,8 +49,31 @@ describe('designFromOperationType', () => {
     expect(sashes('XX')).toEqual(['slider-right', 'slider-left'])
   })
 
+  it('slides a patio door but swings a french door, both of which are XX doors', () => {
+    // The code alone cannot tell these apart; the configuration name can.
+    const patio = layoutUnit(
+      designFromOperationType('XX', { name: 'Sliding Patio XX', category: 'door' }),
+      72, 80, OPTS
+    ).leaves.map((l) => l.sash)
+    expect(patio).toEqual(['slider-right', 'slider-left'])
+
+    const french = layoutUnit(
+      designFromOperationType('XX', { name: 'French Door XX', category: 'door' }),
+      72, 80, OPTS
+    ).leaves.map((l) => l.sash)
+    expect(french).toEqual(['casement-left', 'casement-right'])
+  })
+
+  it('takes swing direction from the name when it is spelled out', () => {
+    const leaves = layoutUnit(
+      designFromOperationType('XX', { name: 'Entry Door XX In-Swing' }),
+      72, 80, OPTS
+    ).leaves
+    expect(leaves.every((l) => l.swing === 'in')).toBe(true)
+  })
+
   it('models a French door (XX) as two operating leaves', () => {
-    const design = designFromOperationType('XX', 'door')
+    const design = designFromOperationType('XX', { name: 'French Door', category: 'door' })
     const leaves = layoutUnit(design, 72, 80, OPTS).leaves
     expect(leaves).toHaveLength(2)
     expect(leaves.map((l) => l.sash)).toEqual(['casement-left', 'casement-right'])
@@ -75,6 +98,22 @@ describe('designFromOperationType', () => {
     const cr = layoutUnit(designFromOperationType('CR'), 36, 48, OPTS).leaves[0]
     expect(cr.sash).toBe('casement-right')
     expect(cr.operable).toBe(true)
+  })
+
+  it('reads hinge side and swing direction out of the configuration code', () => {
+    // Swing and hinge live in the config name, not in columns of their own:
+    // LHIS is a left-hinged in-swing, RHOS a right-hinged out-swing.
+    const leafFor = (code: string) =>
+      layoutUnit(designFromOperationType(code), 36, 80, OPTS).leaves[0]
+
+    expect(leafFor('LHIS')).toMatchObject({ sash: 'casement-left', swing: 'in' })
+    expect(leafFor('LHOS')).toMatchObject({ sash: 'casement-left', swing: 'out' })
+    expect(leafFor('RHIS')).toMatchObject({ sash: 'casement-right', swing: 'in' })
+    expect(leafFor('RHOS')).toMatchObject({ sash: 'casement-right', swing: 'out' })
+  })
+
+  it('defaults a sash with no recorded swing to opening outward', () => {
+    expect(layoutUnit(designFromOperationType('CL'), 36, 80, OPTS).leaves[0].swing).toBe('out')
   })
 
   it('falls back to a single fixed lite for unknown or empty codes', () => {

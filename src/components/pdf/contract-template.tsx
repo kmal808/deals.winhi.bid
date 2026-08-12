@@ -39,15 +39,16 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   title: {
-    fontSize: 16,
+    fontSize: 10,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 12,
     textTransform: 'uppercase',
-    letterSpacing: 2,
-    backgroundColor: BRAND.orange,
+    letterSpacing: 1.5,
     color: BRAND.black,
-    padding: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: BRAND.orange,
+    paddingBottom: 3,
+    marginTop: 4,
+    marginBottom: 10,
   },
   twoColumn: {
     flexDirection: 'row',
@@ -253,7 +254,7 @@ interface Window {
   specialInstructions?: string | null
   design?: UnitDesign | null
   brand?: { name: string } | null
-  productConfig?: { name: string; operationType?: string | null } | null
+  productConfig?: { name: string; operationType?: string | null; category?: string | null } | null
   frameType?: { name: string } | null
   frameColor?: { name: string; hexColor?: string | null } | null
   glassType?: { name: string } | null
@@ -327,7 +328,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
           ]}
         />
 
-        <Text style={styles.title}>Installation Contract</Text>
+        <Text style={styles.title}>Purchase Agreement</Text>
 
         {/* Customer & Job Info */}
         <View style={styles.twoColumn}>
@@ -424,7 +425,10 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
                   <WindowDrawing
                     design={
                       window.design ??
-                      designFromOperationType(window.productConfig?.operationType)
+                      designFromOperationType(window.productConfig?.operationType, {
+                        name: window.productConfig?.name,
+                        category: window.productConfig?.category,
+                      })
                     }
                     width={w || 36}
                     height={h || 48}
@@ -467,7 +471,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
         </View>
 
         {/* Totals */}
-        <View style={styles.totalsBox}>
+        <View style={styles.totalsBox} wrap={false}>
           <View style={styles.totalRow}>
             <Text>Products & Services:</Text>
             <Text>{formatCurrency(windowsTotal)}</Text>
@@ -493,7 +497,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
         </View>
 
         {/* Payment Terms */}
-        <View style={styles.paymentSection}>
+        <View style={styles.paymentSection} wrap={false}>
           <Text style={styles.paymentTitle}>Payment Terms</Text>
           <View style={styles.paymentRow}>
             <Text>Down Payment (due upon signing):</Text>
@@ -507,7 +511,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>Page 1 of 2</Text>
+          <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
       </Page>
 
@@ -578,7 +582,10 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
             Thank you for choosing {BRAND.company.name}!
           </Text>
         </View>
-        <Text style={styles.pageNumber}>Page 2 of 2</Text>
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+        />
       </Page>
     </Document>
   )
