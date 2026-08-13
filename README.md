@@ -201,9 +201,14 @@ docker compose up -d db     # postgres on localhost:5432
 pnpm dev                    # app on localhost:3000
 ```
 
+The compose project name is pinned to `dealswinhibid`, so the data volume is the
+same whichever directory you run from — without that, running compose from a git
+worktree silently creates a second, empty database.
+
 The `app` service is the *production* image and sits behind a `full` profile, so
-it will not start by default and cannot fight `pnpm dev` for port 3000. Use it to
-smoke-test a build before deploying:
+it will not start by default and cannot fight `pnpm dev` for port 3000. It runs
+the real built image on your machine, which is a rehearsal for deployment, not a
+deployment:
 
 ```bash
 docker compose --profile full up --build

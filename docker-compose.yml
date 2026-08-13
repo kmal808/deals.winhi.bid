@@ -1,3 +1,8 @@
+# Pinned so the project name — and therefore the data volume — does not change
+# with the directory compose is run from. Without this, running from a git
+# worktree silently creates a second, empty database.
+name: dealswinhibid
+
 services:
   # Production image, for a smoke test before deploying. Day-to-day development
   # runs `docker compose up -d db` for postgres and `pnpm dev` on the host:
