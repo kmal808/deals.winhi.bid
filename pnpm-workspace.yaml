@@ -1,0 +1,6 @@
+# pnpm will not run a dependency's build scripts unless it is told to, and in a
+# non-interactive install (Docker, CI) an undecided package fails the install
+# outright rather than warning. esbuild is a build-time dependency of Vite and
+# needs its postinstall to link the platform binary.
+allowBuilds:
+  esbuild: true

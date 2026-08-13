@@ -1,50 +1,42 @@
-# Build stage
-FROM node:20-alpine AS builder
+# syntax=docker/dockerfile:1
+
+# ---------- build ----------
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Package files first, so corepack can read the pinned pnpm version from
+# package.json and so this layer caches independently of the source.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+# pnpm version comes from the `packageManager` field, not from `@latest`.
+# An unpinned toolchain means the day pnpm ships a new lockfile format the
+# build breaks here while still working on a developer's machine.
+RUN corepack enable && corepack install
 
-# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy source files
 COPY . .
 
-# Build the application
 RUN pnpm build
 
-# Production stage
-FROM node:20-alpine AS runner
+# ---------- run ----------
+FROM node:24-alpine AS runner
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# No package manager in the runtime image: the server is started with plain
+# node, and every dependency is already bundled into .output by the build.
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 appuser
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 appuser
-
-# Copy built application
-COPY --from=builder /app/.output ./.output
-COPY --from=builder /app/package.json ./
-
-# Set ownership
-RUN chown -R appuser:nodejs /app
+COPY --from=builder --chown=appuser:nodejs /app/.output ./.output
 
 USER appuser
 
-# Expose port
 EXPOSE 3000
 
-# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Start the application
 CMD ["node", ".output/server/index.mjs"]
