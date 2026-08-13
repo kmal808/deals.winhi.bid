@@ -193,6 +193,26 @@ including an explicit `0`, so a comped item stays comped.
 
 ### Commands
 
+**Day-to-day development** runs postgres in a container and the dev server on the
+host, which gives you Vite's sub-second reload:
+
+```bash
+docker compose up -d db     # postgres on localhost:5432
+pnpm dev                    # app on localhost:3000
+```
+
+The `app` service is the *production* image and sits behind a `full` profile, so
+it will not start by default and cannot fight `pnpm dev` for port 3000. Use it to
+smoke-test a build before deploying:
+
+```bash
+docker compose --profile full up --build
+```
+
+There is deliberately no file-watching dev container. The image contains no source
+and serves a built bundle, so syncing source into it restarts the process without
+changing what it runs.
+
 ```bash
 cd app
 

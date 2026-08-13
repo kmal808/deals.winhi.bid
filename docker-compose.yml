@@ -1,7 +1,11 @@
-version: "3.8"
-
 services:
+  # Production image, for a smoke test before deploying. Day-to-day development
+  # runs `docker compose up -d db` for postgres and `pnpm dev` on the host:
+  # the image contains no source and serves a built bundle, so there is nothing
+  # for a file watcher to usefully sync into it.
+  #   docker compose --profile full up --build
   app:
+    profiles: ["full"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -14,24 +18,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./src
-          target: /app/src
-          ignore:
-            - node_modules/
-            - .git/
-            - .output/
-            - .nitro/
-        - action: rebuild
-          path: ./package.json
-          target: /app/package.json
-          ignore:
-            - node_modules/
-            - .git/
-            - .output/
-            - .nitro/
     restart: unless-stopped
     networks:
       - app-network
