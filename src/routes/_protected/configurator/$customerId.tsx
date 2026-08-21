@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save } from 'lucide-react'
-import { useConfiguratorStore } from '@/stores/configurator-store'
+import { cartForCustomer, useConfiguratorStore } from '@/stores/configurator-store'
 import { WizardLayout } from '@/components/configurator/wizard-layout'
 import { ConfigSummary } from '@/components/configurator/config-summary'
 import {
@@ -48,8 +48,14 @@ function ConfiguratorPage() {
   const currentStep = useConfiguratorStore((s) => s.currentStep)
   const setCustomerId = useConfiguratorStore((s) => s.setCustomerId)
   const setPricingFactors = useConfiguratorStore((s) => s.setPricingFactors)
-  const cart = useConfiguratorStore((s) => s.cart)
+  const allCartItems = useConfiguratorStore((s) => s.cart)
   const clearCart = useConfiguratorStore((s) => s.clearCart)
+
+  // Never send another customer's configured units to this customer's job.
+  const cart = useMemo(
+    () => cartForCustomer(allCartItems, customer.id),
+    [allCartItems, customer.id]
+  )
 
   // Initialize store with customer ID and pricing factors
   useEffect(() => {

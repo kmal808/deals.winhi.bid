@@ -125,6 +125,26 @@ const initialConfig: Partial<WindowConfig> = {
   calculatedPrice: 0,
 }
 
+/**
+ * The items in the cart that belong to one customer.
+ *
+ * The cart is persisted to localStorage and survives navigation, so it can hold
+ * items configured for somebody else. Saving used the customer from the current
+ * route for every item in it, which meant configuring for one customer, opening
+ * another, and saving put the first customer's windows on the second's job.
+ *
+ * Items are kept rather than cleared on switching, so a rep can move between two
+ * jobs without losing work; they are simply invisible to, and unsaveable by, any
+ * customer other than the one they were built for.
+ */
+export function cartForCustomer(
+  cart: WindowConfig[],
+  customerId: number | null
+): WindowConfig[] {
+  if (customerId === null) return []
+  return cart.filter((item) => item.customerId === customerId)
+}
+
 export const useConfiguratorStore = create<ConfiguratorState>()(
   persist(
     (set, get) => ({
@@ -142,7 +162,13 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
         productConfigs: [],
       },
 
-      setCustomerId: (customerId) => set({ customerId }),
+      setCustomerId: (customerId) =>
+        set((state) =>
+          state.customerId === customerId
+            ? { customerId }
+            : // A part-built unit belongs to the job it was started on.
+              { customerId, currentConfig: { ...initialConfig }, currentStep: 'category' }
+        ),
 
       setPricingFactors: (factors) => set({ pricingFactors: factors }),
 
@@ -199,7 +225,9 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
         const newItem: WindowConfig = {
           id: crypto.randomUUID(),
           customerId,
-          location: currentConfig.location || `Window ${get().cart.length + 1}`,
+          location:
+            currentConfig.location ||
+            `Window ${cartForCustomer(get().cart, customerId).length + 1}`,
           category: currentConfig.category || 'window',
           productConfigId: currentConfig.productConfigId || null,
           productConfigName: currentConfig.productConfigName || null,
@@ -255,7 +283,11 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
         }
       },
 
-      clearCart: () => set({ cart: [] }),
+      // Only this customer's items: another job's cart must survive a save here.
+      clearCart: () =>
+        set((state) => ({
+          cart: state.cart.filter((item) => item.customerId !== state.customerId),
+        })),
 
       resetConfig: () =>
         set({

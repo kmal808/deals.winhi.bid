@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useConfiguratorStore } from '@/stores/configurator-store'
+import { cartForCustomer, useConfiguratorStore } from '@/stores/configurator-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart, Trash2 } from 'lucide-react'
@@ -8,12 +8,18 @@ import { designFromOperationType } from '@/lib/window-design'
 
 export function ConfigSummary() {
   const currentConfig = useConfiguratorStore((s) => s.currentConfig)
-  const cart = useConfiguratorStore((s) => s.cart)
+  const allCartItems = useConfiguratorStore((s) => s.cart)
+  const customerId = useConfiguratorStore((s) => s.customerId)
   const calculatePrice = useConfiguratorStore((s) => s.calculatePrice)
   const removeFromCart = useConfiguratorStore((s) => s.removeFromCart)
   const editCartItem = useConfiguratorStore((s) => s.editCartItem)
 
   const currentPrice = calculatePrice()
+  // The persisted cart can hold another job's items; show only this one's.
+  const cart = useMemo(
+    () => cartForCustomer(allCartItems, customerId),
+    [allCartItems, customerId]
+  )
   const cartTotal = cart.reduce((sum, item) => sum + item.calculatedPrice, 0)
 
   // The unit is drawn on every step, not only the design step, so a rep can see
