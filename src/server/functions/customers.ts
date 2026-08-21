@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { authMiddleware } from '@/server/middleware/auth'
+import { orderAmount, percent } from '@/server/validators'
 
 const optionalText = z.string().trim().max(500).optional().nullable()
 
@@ -166,8 +167,8 @@ export const createCustomer = createServerFn({ method: 'POST' })
   })
 
 const customerUpdateFields = customerFields.partial().extend({
-  discountPercent: z.union([z.string(), z.number()]).optional().nullable(),
-  downPaymentAmount: z.union([z.string(), z.number()]).optional().nullable(),
+  discountPercent: percent.optional().nullable(),
+  downPaymentAmount: orderAmount.optional().nullable(),
   estimateStartDate: z.string().optional().nullable(),
   estimateEndDate: z.string().optional().nullable(),
   noGrid: z.boolean().optional(),

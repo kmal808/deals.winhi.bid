@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { authMiddleware } from '@/server/middleware/auth'
+import { clearableLineAmount, dimensionInches } from '@/server/validators'
 
 const optionalId = z.number().int().positive().nullable().optional()
 
@@ -40,8 +41,8 @@ export const updateWindow = createServerFn({ method: 'POST' })
       windowId: z.number().int().positive(),
       data: z.object({
         location: z.string().trim().min(1).max(255).optional(),
-        width: z.union([z.string(), z.number()]).optional(),
-        height: z.union([z.string(), z.number()]).optional(),
+        width: dimensionInches.optional(),
+        height: dimensionInches.optional(),
         brandId: optionalId,
         productConfigId: optionalId,
         frameTypeId: optionalId,
@@ -51,7 +52,7 @@ export const updateWindow = createServerFn({ method: 'POST' })
         gridSizeId: optionalId,
         // An explicit override entered by the rep. Null clears it and returns
         // the line to the calculated price.
-        manualPrice: z.union([z.string(), z.number()]).nullable().optional(),
+        manualPrice: clearableLineAmount,
         specialInstructions: z.string().max(5000).nullable().optional(),
         sortOrder: z.number().int().optional(),
       }),
@@ -113,10 +114,13 @@ export const updateWindow = createServerFn({ method: 'POST' })
       .set({
         ...next,
         calculatedPrice: calculatedPrice === null ? existing.calculatedPrice : String(calculatedPrice),
+        // The validator has already turned an empty string into null, so an
+        // explicit null here means "drop the override and use the calculated
+        // price again".
         manualPrice:
           fields.manualPrice === undefined
             ? existing.manualPrice
-            : fields.manualPrice === null || fields.manualPrice === ''
+            : fields.manualPrice === null
               ? null
               : String(fields.manualPrice),
         specialInstructions:

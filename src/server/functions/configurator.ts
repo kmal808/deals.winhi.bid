@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { authMiddleware } from '@/server/middleware/auth'
+import { dimensionInches } from '@/server/validators'
 
 // Load all pricing factors for the configurator
 export const loadPricingFactors = createServerFn()
@@ -58,8 +59,8 @@ export const loadPricingFactors = createServerFn()
 const cartItem = z.object({
   location: z.string().trim().max(255).optional(),
   category: z.enum(['window', 'door']).optional(),
-  width: z.union([z.string(), z.number()]),
-  height: z.union([z.string(), z.number()]),
+  width: dimensionInches,
+  height: dimensionInches,
   brandId: z.number().int().positive().nullable().optional(),
   productConfigId: z.number().int().positive().nullable().optional(),
   frameTypeId: z.number().int().positive().nullable().optional(),
