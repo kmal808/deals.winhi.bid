@@ -70,28 +70,33 @@ window through the wizard → save cart → line item priced and stored server-s
 
 **Still open for Phase 7**
 
-- `product_configs` has duplicate rows (Awning, Casement, Picture and others appear
-  twice) and uses `PIC`/`AW` rather than the canonical `PW`/`AWN` — worth a cleanup
-  pass
-- The designer splits panels evenly; uneven ratios are supported by the data model
-  (`SplitSection.ratios`) but not yet exposed in the UI
-- Dimension lines per panel on the drawing (the reference Konva demo does this and
-  it is genuinely useful on a contract an installer works from)
-- Handle hardware on the opening edge of operating panels
-- Product artwork is missing for `slider-xox`, `patio-xo`, `patio-ox` and `french`;
-  cards without an image fall back to text rather than a broken-image icon
+Contract readiness:
 
-- Signature capture UI (`customers.signatureSvg` is read by the contract PDF but
-  nothing writes it yet)
-- Per-customer contract disclaimer editing (the copy-on-create works; there is no
-  screen to edit them afterwards)
-- Representative/user management screen (accounts are DB-only today)
-- Window reorder is implemented server-side (`reorderWindows`) but the table's drag
-  handle is not wired to it
-- No migration history — the schema is applied with `db:push`. Worth adopting
-  `drizzle-kit generate` before there is production data to protect
+- Signature capture (`customers.signatureSvg` is read by the contract, nothing
+  writes it). Wants a decision before it is built: draw-on-screen, upload an
+  image, or hand off to an e-signature service
+- Representative/user management screen; accounts are DB-only today
+
+Catalogue and drawing:
+
+- `product_configs` still carries the eleven invented seed rows, deactivated
+  rather than deleted, alongside the 62 imported from the PHP database
+- The designer splits panels evenly; uneven ratios are supported by the data
+  model (`SplitSection.ratios`) but not exposed in the UI
+- Dimension lines per panel, which both the reference Konva demo and the
+  OpenJanela quote print and an installer would work from
+- Handle hardware on the opening edge of operating panels
+- Shapes the geometry cannot draw: trapezoids, geometric and bay units exist in
+  the catalogue but the layout assumes a rectangle
+
+Housekeeping:
+
+- Window reorder is implemented server-side (`reorderWindows`) but the table's
+  drag handle is not wired to it
 - Admin screens still do a full `window.location.reload()` after each mutation
   instead of `router.invalidate()`
+- `SESSION_SECRET` is in `.env.example` but nothing reads it; sessions are random
+  256-bit ids in the database. Either wire it into cookie signing or drop it
 
 ### Frame Designer
 
@@ -128,6 +133,25 @@ aliases for rows seeded before the vocabulary settled.
 > The wizard previously labelled these backwards ("X = fixed"). The giveaway was
 > French Door, stored as `XX` — under the inverted reading, a french door whose
 > panels are both fixed shut.
+
+### Migrations
+
+There is a generated baseline in `drizzle/`, and `db:migrate` should be used from
+here on. `db:push` is convenient but keeps no history, which is exactly what a
+staging or production database cannot do without.
+
+A database that was built with `db:push` already has the tables but no migration
+history, so `db:migrate` would try to create them again and fail on the first
+one. Record the baseline as already applied instead — once, per database:
+
+```bash
+pnpm db:baseline --dry-run   # show what would be recorded
+pnpm db:baseline             # record it
+```
+
+Only do that where the schema already matches the migrations being recorded: it
+asserts a claim about the database rather than inspecting it. A fresh, empty
+database wants `pnpm db:migrate` and nothing else.
 
 ### Branding
 
