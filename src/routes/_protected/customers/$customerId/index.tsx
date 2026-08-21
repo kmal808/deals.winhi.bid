@@ -58,6 +58,11 @@ function CustomerDetailPage() {
       email: formData.get('email') as string,
       comments: formData.get('comments') as string,
       discountPercent: formData.get('discountPercent') as string,
+      // Contract fields. Blank means "not agreed", which the contract reads as
+      // its default rather than as zero.
+      downPaymentAmount: (formData.get('downPaymentAmount') as string) || null,
+      estimateStartDate: (formData.get('estimateStartDate') as string) || null,
+      estimateEndDate: (formData.get('estimateEndDate') as string) || null,
     }
 
     try {
@@ -228,6 +233,39 @@ function CustomerDetailPage() {
                         defaultValue={customer.discountPercent || '0'}
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="downPaymentAmount">Down Payment</Label>
+                      <Input
+                        id="downPaymentAmount"
+                        name="downPaymentAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Half the total"
+                        defaultValue={customer.downPaymentAmount || ''}
+                      />
+                      <p className="text-xs text-gray-500">
+                        Leave blank to charge half the total.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="estimateStartDate">Install Window — From</Label>
+                      <Input
+                        id="estimateStartDate"
+                        name="estimateStartDate"
+                        placeholder="e.g. 12 weeks from signing"
+                        defaultValue={customer.estimateStartDate || ''}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="estimateEndDate">Install Window — To</Label>
+                      <Input
+                        id="estimateEndDate"
+                        name="estimateEndDate"
+                        placeholder="e.g. 14 weeks from signing"
+                        defaultValue={customer.estimateEndDate || ''}
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button type="submit" disabled={isSaving}>
@@ -269,6 +307,24 @@ function CustomerDetailPage() {
                   <div>
                     <dt className="text-gray-500">Discount</dt>
                     <dd className="text-gray-900">{discountPercent}%</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Down Payment</dt>
+                    <dd className="text-gray-900">
+                      {customer.downPaymentAmount
+                        ? formatCurrency(Number(customer.downPaymentAmount))
+                        : 'Half the total'}
+                    </dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="text-gray-500">Install Window</dt>
+                    <dd className="text-gray-900">
+                      {customer.estimateStartDate || customer.estimateEndDate
+                        ? [customer.estimateStartDate, customer.estimateEndDate]
+                            .filter(Boolean)
+                            .join(' — ')
+                        : '—'}
+                    </dd>
                   </div>
                 </dl>
               )}
