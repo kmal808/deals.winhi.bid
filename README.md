@@ -140,6 +140,32 @@ aliases for rows seeded before the vocabulary settled.
 > French Door, stored as `XX` — under the inverted reading, a french door whose
 > panels are both fixed shut.
 
+### Deploying
+
+The image migrates the database on start-up, then serves. A failed migration
+fails the deploy rather than serving against a schema it does not match. Set
+`SKIP_MIGRATIONS=1` where something else owns migrations, or to get a container
+up for diagnosis when a migration is the broken thing.
+
+`GET /health` returns 200 only when the process is up *and* postgres answers,
+and 503 otherwise, so a container that booted without a database is treated as a
+failed deploy. It reports the build that answered, from `APP_VERSION`:
+
+```bash
+docker build --build-arg APP_VERSION=$(git rev-parse --short HEAD) -t winhi .
+```
+
+Required at runtime: `DATABASE_URL`. That is all — the image carries no source,
+no package manager and no node_modules, and every dependency is bundled.
+
+One replica at a time. Two containers starting together would race on the
+migrations table.
+
+**Preview deploys** should get their own throwaway database rather than pointing
+at staging, so a migration on a branch cannot alter what the rep is testing. An
+empty database is useless without a catalogue, so a preview wants `pnpm db:seed`
+after migrating.
+
 ### Migrations
 
 There is a generated baseline in `drizzle/`, and `db:migrate` should be used from

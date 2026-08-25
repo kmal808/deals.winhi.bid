@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate } from '@tanstack/react-router'
+import { FeedbackButton } from '@/components/feedback-button'
 import { getSession, logout, type SessionData } from '@/server/functions/auth'
 import { Button } from '@/components/ui/button'
 import { LogOut, Users, Settings } from 'lucide-react'
@@ -29,6 +30,9 @@ function ProtectedLayout() {
       <main className="container mx-auto px-4 py-8">
         <Outlet />
       </main>
+
+      {/* Available on every signed-in screen, including in the field. */}
+      <FeedbackButton />
     </div>
   )
 }

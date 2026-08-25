@@ -241,6 +241,30 @@ export const contractDisclaimers = pgTable('contract_disclaimers', {
   sortOrder: integer('sort_order').default(0),
 })
 
+// Feedback from reps using the app
+//
+// Deliberately not a bug tracker. A rep in a driveway will not describe which
+// screen they were on or which job they had open, so the app records that
+// itself and asks them one question in plain language.
+export const feedback = pgTable('feedback', {
+  id: serial('id').primaryKey(),
+  representativeId: integer('representative_id').references(() => representatives.id),
+
+  /** What they typed. The only thing they have to fill in. */
+  message: text('message').notNull(),
+
+  // Captured automatically — the context that makes a report reproducible.
+  path: varchar('path', { length: 500 }),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+  userAgent: varchar('user_agent', { length: 500 }),
+  /** Build the app was running, from APP_VERSION. */
+  appVersion: varchar('app_version', { length: 100 }),
+
+  /** Cleared once it has been dealt with, so the list works like an inbox. */
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
 // Application Settings
 export const settings = pgTable('settings', {
   key: varchar('key', { length: 100 }).primaryKey(),
@@ -252,6 +276,18 @@ export const settings = pgTable('settings', {
 export const representativesRelations = relations(representatives, ({ many }) => ({
   customers: many(customers),
   sessions: many(sessions),
+  feedback: many(feedback),
+}))
+
+export const feedbackRelations = relations(feedback, ({ one }) => ({
+  representative: one(representatives, {
+    fields: [feedback.representativeId],
+    references: [representatives.id],
+  }),
+  customer: one(customers, {
+    fields: [feedback.customerId],
+    references: [customers.id],
+  }),
 }))
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({

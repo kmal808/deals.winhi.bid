@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as HealthRouteImport } from './routes/health'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProtectedCustomersRouteImport } from './routes/_protected/customers'
@@ -25,6 +26,7 @@ import { Route as ProtectedAdminGridSizesRouteImport } from './routes/_protected
 import { Route as ProtectedAdminGlassTypesRouteImport } from './routes/_protected/admin/glass-types'
 import { Route as ProtectedAdminFrameTypesRouteImport } from './routes/_protected/admin/frame-types'
 import { Route as ProtectedAdminFrameColorsRouteImport } from './routes/_protected/admin/frame-colors'
+import { Route as ProtectedAdminFeedbackRouteImport } from './routes/_protected/admin/feedback'
 import { Route as ProtectedAdminDisclaimersRouteImport } from './routes/_protected/admin/disclaimers'
 import { Route as ProtectedAdminBrandsRouteImport } from './routes/_protected/admin/brands'
 import { Route as ProtectedCustomersCustomerIdIndexRouteImport } from './routes/_protected/customers/$customerId/index'
@@ -34,6 +36,11 @@ import { Route as ProtectedCustomersCustomerIdContractRouteImport } from './rout
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProtectedRoute = ProtectedRouteImport.update({
@@ -117,6 +124,11 @@ const ProtectedAdminFrameColorsRoute =
     path: '/frame-colors',
     getParentRoute: () => ProtectedAdminRoute,
   } as any)
+const ProtectedAdminFeedbackRoute = ProtectedAdminFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => ProtectedAdminRoute,
+} as any)
 const ProtectedAdminDisclaimersRoute =
   ProtectedAdminDisclaimersRouteImport.update({
     id: '/disclaimers',
@@ -149,11 +161,13 @@ const ProtectedCustomersCustomerIdContractRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/admin': typeof ProtectedAdminRouteWithChildren
   '/customers': typeof ProtectedCustomersRouteWithChildren
   '/admin/brands': typeof ProtectedAdminBrandsRoute
   '/admin/disclaimers': typeof ProtectedAdminDisclaimersRoute
+  '/admin/feedback': typeof ProtectedAdminFeedbackRoute
   '/admin/frame-colors': typeof ProtectedAdminFrameColorsRoute
   '/admin/frame-types': typeof ProtectedAdminFrameTypesRoute
   '/admin/glass-types': typeof ProtectedAdminGlassTypesRoute
@@ -171,9 +185,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/admin/brands': typeof ProtectedAdminBrandsRoute
   '/admin/disclaimers': typeof ProtectedAdminDisclaimersRoute
+  '/admin/feedback': typeof ProtectedAdminFeedbackRoute
   '/admin/frame-colors': typeof ProtectedAdminFrameColorsRoute
   '/admin/frame-types': typeof ProtectedAdminFrameTypesRoute
   '/admin/glass-types': typeof ProtectedAdminGlassTypesRoute
@@ -192,11 +208,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_protected': typeof ProtectedRouteWithChildren
+  '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/_protected/admin': typeof ProtectedAdminRouteWithChildren
   '/_protected/customers': typeof ProtectedCustomersRouteWithChildren
   '/_protected/admin/brands': typeof ProtectedAdminBrandsRoute
   '/_protected/admin/disclaimers': typeof ProtectedAdminDisclaimersRoute
+  '/_protected/admin/feedback': typeof ProtectedAdminFeedbackRoute
   '/_protected/admin/frame-colors': typeof ProtectedAdminFrameColorsRoute
   '/_protected/admin/frame-types': typeof ProtectedAdminFrameTypesRoute
   '/_protected/admin/glass-types': typeof ProtectedAdminGlassTypesRoute
@@ -216,11 +234,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/health'
     | '/login'
     | '/admin'
     | '/customers'
     | '/admin/brands'
     | '/admin/disclaimers'
+    | '/admin/feedback'
     | '/admin/frame-colors'
     | '/admin/frame-types'
     | '/admin/glass-types'
@@ -238,9 +258,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/health'
     | '/login'
     | '/admin/brands'
     | '/admin/disclaimers'
+    | '/admin/feedback'
     | '/admin/frame-colors'
     | '/admin/frame-types'
     | '/admin/glass-types'
@@ -258,11 +280,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_protected'
+    | '/health'
     | '/login'
     | '/_protected/admin'
     | '/_protected/customers'
     | '/_protected/admin/brands'
     | '/_protected/admin/disclaimers'
+    | '/_protected/admin/feedback'
     | '/_protected/admin/frame-colors'
     | '/_protected/admin/frame-types'
     | '/_protected/admin/glass-types'
@@ -282,6 +306,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProtectedRoute: typeof ProtectedRouteWithChildren
+  HealthRoute: typeof HealthRoute
   LoginRoute: typeof LoginRoute
 }
 
@@ -292,6 +317,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_protected': {
@@ -399,6 +431,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedAdminFrameColorsRouteImport
       parentRoute: typeof ProtectedAdminRoute
     }
+    '/_protected/admin/feedback': {
+      id: '/_protected/admin/feedback'
+      path: '/feedback'
+      fullPath: '/admin/feedback'
+      preLoaderRoute: typeof ProtectedAdminFeedbackRouteImport
+      parentRoute: typeof ProtectedAdminRoute
+    }
     '/_protected/admin/disclaimers': {
       id: '/_protected/admin/disclaimers'
       path: '/disclaimers'
@@ -440,6 +479,7 @@ declare module '@tanstack/react-router' {
 interface ProtectedAdminRouteChildren {
   ProtectedAdminBrandsRoute: typeof ProtectedAdminBrandsRoute
   ProtectedAdminDisclaimersRoute: typeof ProtectedAdminDisclaimersRoute
+  ProtectedAdminFeedbackRoute: typeof ProtectedAdminFeedbackRoute
   ProtectedAdminFrameColorsRoute: typeof ProtectedAdminFrameColorsRoute
   ProtectedAdminFrameTypesRoute: typeof ProtectedAdminFrameTypesRoute
   ProtectedAdminGlassTypesRoute: typeof ProtectedAdminGlassTypesRoute
@@ -452,6 +492,7 @@ interface ProtectedAdminRouteChildren {
 const ProtectedAdminRouteChildren: ProtectedAdminRouteChildren = {
   ProtectedAdminBrandsRoute: ProtectedAdminBrandsRoute,
   ProtectedAdminDisclaimersRoute: ProtectedAdminDisclaimersRoute,
+  ProtectedAdminFeedbackRoute: ProtectedAdminFeedbackRoute,
   ProtectedAdminFrameColorsRoute: ProtectedAdminFrameColorsRoute,
   ProtectedAdminFrameTypesRoute: ProtectedAdminFrameTypesRoute,
   ProtectedAdminGlassTypesRoute: ProtectedAdminGlassTypesRoute,
@@ -521,6 +562,7 @@ const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProtectedRoute: ProtectedRouteWithChildren,
+  HealthRoute: HealthRoute,
   LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport

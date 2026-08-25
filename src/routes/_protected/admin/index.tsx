@@ -8,7 +8,8 @@ import {
   Grid3X3,
   Ruler,
   Settings2,
-  FileText
+  FileText,
+  MessageCircleWarning
 } from 'lucide-react'
 
 export const Route = createFileRoute('/_protected/admin/')({
@@ -16,6 +17,12 @@ export const Route = createFileRoute('/_protected/admin/')({
 })
 
 const configItems = [
+  {
+    title: 'Feedback',
+    description: 'What reps have reported from the field',
+    icon: MessageCircleWarning,
+    href: '/admin/feedback',
+  },
   {
     title: 'Brands',
     description: 'Manage window/door brands and pricing factors',

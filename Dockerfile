@@ -31,6 +31,9 @@ RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 appuser
 
 COPY --from=builder --chown=appuser:nodejs /app/.output ./.output
+# The migration SQL is read at start-up by .output/migrate.mjs.
+COPY --from=builder --chown=appuser:nodejs /app/drizzle ./drizzle
+COPY --chown=appuser:nodejs docker-entrypoint.sh ./
 
 USER appuser
 
@@ -39,4 +42,9 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
 
-CMD ["node", ".output/server/index.mjs"]
+# Stamped at build time and reported by /health, so a probe says which build
+# answered it.
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
