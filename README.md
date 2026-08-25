@@ -73,8 +73,14 @@ window through the wizard → save cart → line item priced and stored server-s
 Contract readiness:
 
 - Signature capture (`customers.signatureSvg` is read by the contract, nothing
-  writes it). Wants a decision before it is built: draw-on-screen, upload an
-  image, or hand off to an e-signature service
+  writes it). Not urgent: reps currently open the PDF in PDF Expert, sign on
+  screen with a finger or stylus, flatten it, and email it to the customer and
+  the office manager, who re-keys it into the CRM.
+
+  Worth noting that signing is not the slow part of that. The app could send the
+  finished PDF to both addresses itself and remove a manual step without
+  capturing a signature at all — probably the higher-value half, and much less
+  work.
 - Representative/user management screen; accounts are DB-only today
 
 Catalogue and drawing:
