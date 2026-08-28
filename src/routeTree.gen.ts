@@ -20,6 +20,7 @@ import { Route as ProtectedAdminIndexRouteImport } from './routes/_protected/adm
 import { Route as ProtectedCustomersNewRouteImport } from './routes/_protected/customers/new'
 import { Route as ProtectedCustomersCustomerIdRouteImport } from './routes/_protected/customers/$customerId'
 import { Route as ProtectedConfiguratorCustomerIdRouteImport } from './routes/_protected/configurator/$customerId'
+import { Route as ProtectedAdminRepresentativesRouteImport } from './routes/_protected/admin/representatives'
 import { Route as ProtectedAdminProductConfigsRouteImport } from './routes/_protected/admin/product-configs'
 import { Route as ProtectedAdminGridStylesRouteImport } from './routes/_protected/admin/grid-styles'
 import { Route as ProtectedAdminGridSizesRouteImport } from './routes/_protected/admin/grid-sizes'
@@ -88,6 +89,12 @@ const ProtectedConfiguratorCustomerIdRoute =
     id: '/configurator/$customerId',
     path: '/configurator/$customerId',
     getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedAdminRepresentativesRoute =
+  ProtectedAdminRepresentativesRouteImport.update({
+    id: '/representatives',
+    path: '/representatives',
+    getParentRoute: () => ProtectedAdminRoute,
   } as any)
 const ProtectedAdminProductConfigsRoute =
   ProtectedAdminProductConfigsRouteImport.update({
@@ -174,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/admin/grid-sizes': typeof ProtectedAdminGridSizesRoute
   '/admin/grid-styles': typeof ProtectedAdminGridStylesRoute
   '/admin/product-configs': typeof ProtectedAdminProductConfigsRoute
+  '/admin/representatives': typeof ProtectedAdminRepresentativesRoute
   '/configurator/$customerId': typeof ProtectedConfiguratorCustomerIdRoute
   '/customers/$customerId': typeof ProtectedCustomersCustomerIdRouteWithChildren
   '/customers/new': typeof ProtectedCustomersNewRoute
@@ -196,6 +204,7 @@ export interface FileRoutesByTo {
   '/admin/grid-sizes': typeof ProtectedAdminGridSizesRoute
   '/admin/grid-styles': typeof ProtectedAdminGridStylesRoute
   '/admin/product-configs': typeof ProtectedAdminProductConfigsRoute
+  '/admin/representatives': typeof ProtectedAdminRepresentativesRoute
   '/configurator/$customerId': typeof ProtectedConfiguratorCustomerIdRoute
   '/customers/new': typeof ProtectedCustomersNewRoute
   '/admin': typeof ProtectedAdminIndexRoute
@@ -221,6 +230,7 @@ export interface FileRoutesById {
   '/_protected/admin/grid-sizes': typeof ProtectedAdminGridSizesRoute
   '/_protected/admin/grid-styles': typeof ProtectedAdminGridStylesRoute
   '/_protected/admin/product-configs': typeof ProtectedAdminProductConfigsRoute
+  '/_protected/admin/representatives': typeof ProtectedAdminRepresentativesRoute
   '/_protected/configurator/$customerId': typeof ProtectedConfiguratorCustomerIdRoute
   '/_protected/customers/$customerId': typeof ProtectedCustomersCustomerIdRouteWithChildren
   '/_protected/customers/new': typeof ProtectedCustomersNewRoute
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/admin/grid-sizes'
     | '/admin/grid-styles'
     | '/admin/product-configs'
+    | '/admin/representatives'
     | '/configurator/$customerId'
     | '/customers/$customerId'
     | '/customers/new'
@@ -269,6 +280,7 @@ export interface FileRouteTypes {
     | '/admin/grid-sizes'
     | '/admin/grid-styles'
     | '/admin/product-configs'
+    | '/admin/representatives'
     | '/configurator/$customerId'
     | '/customers/new'
     | '/admin'
@@ -293,6 +305,7 @@ export interface FileRouteTypes {
     | '/_protected/admin/grid-sizes'
     | '/_protected/admin/grid-styles'
     | '/_protected/admin/product-configs'
+    | '/_protected/admin/representatives'
     | '/_protected/configurator/$customerId'
     | '/_protected/customers/$customerId'
     | '/_protected/customers/new'
@@ -388,6 +401,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/configurator/$customerId'
       preLoaderRoute: typeof ProtectedConfiguratorCustomerIdRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/admin/representatives': {
+      id: '/_protected/admin/representatives'
+      path: '/representatives'
+      fullPath: '/admin/representatives'
+      preLoaderRoute: typeof ProtectedAdminRepresentativesRouteImport
+      parentRoute: typeof ProtectedAdminRoute
     }
     '/_protected/admin/product-configs': {
       id: '/_protected/admin/product-configs'
@@ -486,6 +506,7 @@ interface ProtectedAdminRouteChildren {
   ProtectedAdminGridSizesRoute: typeof ProtectedAdminGridSizesRoute
   ProtectedAdminGridStylesRoute: typeof ProtectedAdminGridStylesRoute
   ProtectedAdminProductConfigsRoute: typeof ProtectedAdminProductConfigsRoute
+  ProtectedAdminRepresentativesRoute: typeof ProtectedAdminRepresentativesRoute
   ProtectedAdminIndexRoute: typeof ProtectedAdminIndexRoute
 }
 
@@ -499,6 +520,7 @@ const ProtectedAdminRouteChildren: ProtectedAdminRouteChildren = {
   ProtectedAdminGridSizesRoute: ProtectedAdminGridSizesRoute,
   ProtectedAdminGridStylesRoute: ProtectedAdminGridStylesRoute,
   ProtectedAdminProductConfigsRoute: ProtectedAdminProductConfigsRoute,
+  ProtectedAdminRepresentativesRoute: ProtectedAdminRepresentativesRoute,
   ProtectedAdminIndexRoute: ProtectedAdminIndexRoute,
 }
 

@@ -9,7 +9,8 @@ import {
   Ruler,
   Settings2,
   FileText,
-  MessageCircleWarning
+  MessageCircleWarning,
+  Users
 } from 'lucide-react'
 
 export const Route = createFileRoute('/_protected/admin/')({
@@ -17,6 +18,12 @@ export const Route = createFileRoute('/_protected/admin/')({
 })
 
 const configItems = [
+  {
+    title: 'People',
+    description: 'Who can sign in, and what they can do',
+    icon: Users,
+    href: '/admin/representatives',
+  },
   {
     title: 'Feedback',
     description: 'What reps have reported from the field',

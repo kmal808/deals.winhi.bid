@@ -81,7 +81,6 @@ Contract readiness:
   finished PDF to both addresses itself and remove a manual step without
   capturing a signature at all — probably the higher-value half, and much less
   work.
-- Representative/user management screen; accounts are DB-only today
 
 Catalogue and drawing:
 
@@ -139,6 +138,18 @@ aliases for rows seeded before the vocabulary settled.
 > The wizard previously labelled these backwards ("X = fixed"). The giveaway was
 > French Door, stored as `XX` — under the inverted reading, a french door whose
 > panels are both fixed shut.
+
+### People
+
+Accounts are managed at `/admin/representatives` — create, edit, deactivate, and
+set a new password. Admin only.
+
+Two rules are enforced on the server rather than only in the UI. An admin cannot
+deactivate or demote their own account, because locking the last administrator
+out of the screen that manages administrators has no remedy inside the app. And
+deactivating someone, or resetting their password, deletes their sessions
+immediately: a reset after a lost phone actually revokes access rather than
+waiting for the session to expire.
 
 ### Deploying
 
