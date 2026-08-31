@@ -65,7 +65,7 @@
     "jsdom": "^27.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
-    "vite": "^7.3.1",
+    "vite": "^7.3.5",
     "vite-plugin-node-polyfills": "^0.25.0",
     "vitest": "^3.0.5",
     "web-vitals": "^5.1.0"
