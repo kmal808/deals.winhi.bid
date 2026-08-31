@@ -19,13 +19,13 @@ import { listDisclaimers, createDisclaimer, updateDisclaimer, deleteDisclaimer }
 interface Disclaimer {
   id: number
   description: string
-  sortOrder: number
-  includeByDefault: boolean
+  sortOrder: number | null
+  includeByDefault: boolean | null
 }
 
 export const Route = createFileRoute('/_protected/admin/disclaimers')({
   loader: async () => {
-    const disclaimers = await (listDisclaimers as any)()
+    const disclaimers = await listDisclaimers()
     return { disclaimers }
   },
   component: DisclaimersPage,
@@ -80,7 +80,7 @@ function DisclaimersPage() {
     if (!confirm('Are you sure you want to delete this disclaimer?')) return
 
     try {
-      await (deleteDisclaimer as any)({ data: { id: item.id } })
+      await deleteDisclaimer({ data: { id: item.id } })
       window.location.reload()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
@@ -101,9 +101,9 @@ function DisclaimersPage() {
 
     try {
       if (editingItem) {
-        await (updateDisclaimer as any)({ data: { id: editingItem.id, ...data } })
+        await updateDisclaimer({ data: { id: editingItem.id, ...data } })
       } else {
-        await (createDisclaimer as any)({ data })
+        await createDisclaimer({ data })
       }
       setIsDialogOpen(false)
       window.location.reload()

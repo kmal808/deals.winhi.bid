@@ -1,74 +1,73 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getCookie, setCookie, deleteCookie } from '@tanstack/react-start/server'
-import bcrypt from 'bcryptjs'
+import { z } from 'zod'
+import type { SessionData } from '@/server/session'
 
-const SESSION_COOKIE = 'wh_session'
-const SESSION_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
+export type { SessionData }
 
-export interface SessionData {
-  userId: number
-  username: string
-  name: string
-  role: 'admin' | 'representative'
-}
+const loginInput = z.object({
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required'),
+})
 
-// Simple in-memory session store
-const sessions = new Map<string, SessionData>()
-
-export const performLogin = createServerFn().handler(
-  async (ctx: any) => {
-    const { username, password } = ctx?.data || {}
-
+export const performLogin = createServerFn({ method: 'POST' })
+  .inputValidator(loginInput)
+  .handler(async ({ data }) => {
     const { eq } = await import('drizzle-orm')
     const { getDb } = await import('@/lib/db')
     const { representatives } = await import('@/db/schema')
+    const { setCookie } = await import('@tanstack/react-start/server')
+    const { createSession, SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } = await import(
+      '@/server/session'
+    )
+    const { default: bcrypt } = await import('bcryptjs')
 
     const db = await getDb()
     const user = await db.query.representatives.findFirst({
-      where: eq(representatives.username, username),
+      where: eq(representatives.username, data.username),
     })
 
-    if (!user || !user.active) {
+    // Compare against a dummy hash when the user is missing so that a bad
+    // username and a bad password take the same amount of time to reject.
+    const hash = user?.passwordHash ?? '$2b$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv'
+    const passwordMatches = await bcrypt.compare(data.password, hash)
+
+    if (!user || !user.active || !passwordMatches) {
       throw new Error('Invalid credentials')
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash)
-    if (!valid) {
-      throw new Error('Invalid credentials')
-    }
+    const sessionId = await createSession(user.id)
 
-    const sessionId = crypto.randomUUID()
-    const sessionData: SessionData = {
+    setCookie(SESSION_COOKIE, sessionId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: SESSION_MAX_AGE_SECONDS,
+      path: '/',
+    })
+
+    const session: SessionData = {
       userId: user.id,
       username: user.username,
       name: user.name,
       role: user.role,
     }
 
-    sessions.set(sessionId, sessionData)
+    return { success: true as const, user: session }
+  })
 
-    setCookie(SESSION_COOKIE, sessionId, {
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: SESSION_MAX_AGE,
-      path: '/',
-    })
+export const logout = createServerFn({ method: 'POST' }).handler(async () => {
+  const { getCookie, deleteCookie } = await import('@tanstack/react-start/server')
+  const { destroySession, SESSION_COOKIE } = await import('@/server/session')
 
-    return { success: true as const, user: sessionData }
-  }
-)
-
-export const logout = createServerFn().handler(async () => {
-  const sessionId = getCookie(SESSION_COOKIE)
-  if (sessionId) {
-    sessions.delete(sessionId)
-  }
+  await destroySession(getCookie(SESSION_COOKIE))
   deleteCookie(SESSION_COOKIE, { path: '/' })
+
   return { success: true as const }
 })
 
 export const getSession = createServerFn().handler(async (): Promise<SessionData | null> => {
-  const sessionId = getCookie(SESSION_COOKIE)
-  if (!sessionId) return null
-  return sessions.get(sessionId) || null
+  const { getCookie } = await import('@tanstack/react-start/server')
+  const { readSession, SESSION_COOKIE } = await import('@/server/session')
+
+  return await readSession(getCookie(SESSION_COOKIE))
 })

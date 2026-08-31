@@ -1,20 +1,65 @@
-import { useConfiguratorStore } from '@/stores/configurator-store'
+import { useMemo } from 'react'
+import { cartForCustomer, useConfiguratorStore } from '@/stores/configurator-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart, Trash2 } from 'lucide-react'
+import { WindowDesigner } from './window-designer'
+import { designFromOperationType } from '@/lib/window-design'
 
 export function ConfigSummary() {
   const currentConfig = useConfiguratorStore((s) => s.currentConfig)
-  const cart = useConfiguratorStore((s) => s.cart)
+  const allCartItems = useConfiguratorStore((s) => s.cart)
+  const customerId = useConfiguratorStore((s) => s.customerId)
   const calculatePrice = useConfiguratorStore((s) => s.calculatePrice)
   const removeFromCart = useConfiguratorStore((s) => s.removeFromCart)
   const editCartItem = useConfiguratorStore((s) => s.editCartItem)
 
   const currentPrice = calculatePrice()
+  // The persisted cart can hold another job's items; show only this one's.
+  const cart = useMemo(
+    () => cartForCustomer(allCartItems, customerId),
+    [allCartItems, customerId]
+  )
   const cartTotal = cart.reduce((sum, item) => sum + item.calculatedPrice, 0)
+
+  // The unit is drawn on every step, not only the design step, so a rep can see
+  // the effect of a colour or an operation choice as they make it.
+  const previewDesign = useMemo(
+    () =>
+      currentConfig.design ??
+      designFromOperationType(currentConfig.operationType, {
+        name: currentConfig.productConfigName,
+        category: currentConfig.category,
+      }),
+    [
+      currentConfig.design,
+      currentConfig.operationType,
+      currentConfig.category,
+      currentConfig.productConfigName,
+    ]
+  )
 
   return (
     <div className="space-y-4">
+      {/* Live preview */}
+      {currentConfig.category && (
+        <Card>
+          <CardContent className="pt-4">
+            <p className="mb-1 text-xs font-medium text-blue-600">Outside View</p>
+            <WindowDesigner
+              readOnly
+              design={previewDesign}
+              width={currentConfig.width || 36}
+              height={currentConfig.height || 48}
+              frameColor={currentConfig.frameColorHex}
+              canvasWidth={240}
+              canvasHeight={190}
+              onChange={() => {}}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Current Configuration */}
       <Card>
         <CardHeader className="pb-3">

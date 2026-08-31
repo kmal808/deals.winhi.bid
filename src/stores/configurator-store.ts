@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { calculateUnitPrice } from '@/lib/pricing'
+import { designFromOperationType, type UnitDesign } from '@/lib/window-design'
 
 export interface WindowConfig {
   id: string
@@ -25,6 +27,8 @@ export interface WindowConfig {
   gridSizeId: number | null
   gridSizeName: string | null
   noGrid: boolean
+  /** Section tree from the frame designer. */
+  design: UnitDesign | null
   calculatedPrice: number
 }
 
@@ -37,6 +41,7 @@ export type WizardStep =
   | 'color'
   | 'glass'
   | 'grids'
+  | 'design'
   | 'review'
 
 const STEP_ORDER: WizardStep[] = [
@@ -48,6 +53,7 @@ const STEP_ORDER: WizardStep[] = [
   'color',
   'glass',
   'grids',
+  'design',
   'review',
 ]
 
@@ -64,7 +70,7 @@ interface ConfiguratorState {
   pricingFactors: {
     brands: Array<{ id: number; name: string; factor: string }>
     frameTypes: Array<{ id: number; name: string; factor: string }>
-    frameColors: Array<{ id: number; name: string; hexColor: string; factor: string }>
+    frameColors: Array<{ id: number; name: string; hexColor: string | null; factor: string }>
     glassTypes: Array<{ id: number; name: string; factor: string; imagePath: string | null }>
     gridStyles: Array<{ id: number; name: string; factor: string; imagePath: string | null }>
     gridSizes: Array<{ id: number; size: string }>
@@ -73,7 +79,7 @@ interface ConfiguratorState {
       name: string
       category: string
       operationType: string | null
-      liteCount: number
+      liteCount: number | null
       imagePath: string | null
     }>
   }
@@ -115,7 +121,28 @@ const initialConfig: Partial<WindowConfig> = {
   gridSizeId: null,
   gridSizeName: null,
   noGrid: false,
+  design: null,
   calculatedPrice: 0,
+}
+
+/**
+ * The items in the cart that belong to one customer.
+ *
+ * The cart is persisted to localStorage and survives navigation, so it can hold
+ * items configured for somebody else. Saving used the customer from the current
+ * route for every item in it, which meant configuring for one customer, opening
+ * another, and saving put the first customer's windows on the second's job.
+ *
+ * Items are kept rather than cleared on switching, so a rep can move between two
+ * jobs without losing work; they are simply invisible to, and unsaveable by, any
+ * customer other than the one they were built for.
+ */
+export function cartForCustomer(
+  cart: WindowConfig[],
+  customerId: number | null
+): WindowConfig[] {
+  if (customerId === null) return []
+  return cart.filter((item) => item.customerId === customerId)
 }
 
 export const useConfiguratorStore = create<ConfiguratorState>()(
@@ -135,7 +162,13 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
         productConfigs: [],
       },
 
-      setCustomerId: (customerId) => set({ customerId }),
+      setCustomerId: (customerId) =>
+        set((state) =>
+          state.customerId === customerId
+            ? { customerId }
+            : // A part-built unit belongs to the job it was started on.
+              { customerId, currentConfig: { ...initialConfig }, currentStep: 'category' }
+        ),
 
       setPricingFactors: (factors) => set({ pricingFactors: factors }),
 
@@ -163,37 +196,25 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
         }))
       },
 
+      /**
+       * Quotes the in-progress configuration for immediate feedback. The server
+       * recomputes this from the same formula when the cart is saved, so this is
+       * a preview — never the figure of record.
+       */
       calculatePrice: () => {
         const { currentConfig, pricingFactors } = get()
         const { width, height, brandId, frameTypeId, frameColorId, glassTypeId, gridStyleId, noGrid } =
           currentConfig
 
-        if (!width || !height) return 0
-
-        // Find factors
-        const brandFactor = parseFloat(
-          pricingFactors.brands.find((b) => b.id === brandId)?.factor || '1.0'
-        )
-        const frameTypeFactor = parseFloat(
-          pricingFactors.frameTypes.find((f) => f.id === frameTypeId)?.factor || '1.0'
-        )
-        const colorFactor = parseFloat(
-          pricingFactors.frameColors.find((c) => c.id === frameColorId)?.factor || '1.0'
-        )
-        const glassFactor = parseFloat(
-          pricingFactors.glassTypes.find((g) => g.id === glassTypeId)?.factor || '1.0'
-        )
-        const gridFactor = noGrid
-          ? 1.0
-          : parseFloat(
-              pricingFactors.gridStyles.find((g) => g.id === gridStyleId)?.factor || '1.0'
-            )
-
-        // Price formula: (height + width) × sum of factors
-        const totalFactor = brandFactor + frameTypeFactor + colorFactor + glassFactor + gridFactor
-        const price = (height + width) * totalFactor
-
-        return Math.round(price * 100) / 100
+        return calculateUnitPrice(width, height, {
+          brand: pricingFactors.brands.find((b) => b.id === brandId)?.factor,
+          frameType: pricingFactors.frameTypes.find((f) => f.id === frameTypeId)?.factor,
+          frameColor: pricingFactors.frameColors.find((c) => c.id === frameColorId)?.factor,
+          glassType: pricingFactors.glassTypes.find((g) => g.id === glassTypeId)?.factor,
+          gridStyle: noGrid
+            ? null
+            : pricingFactors.gridStyles.find((g) => g.id === gridStyleId)?.factor,
+        })
       },
 
       addToCart: () => {
@@ -204,7 +225,9 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
         const newItem: WindowConfig = {
           id: crypto.randomUUID(),
           customerId,
-          location: currentConfig.location || `Window ${get().cart.length + 1}`,
+          location:
+            currentConfig.location ||
+            `Window ${cartForCustomer(get().cart, customerId).length + 1}`,
           category: currentConfig.category || 'window',
           productConfigId: currentConfig.productConfigId || null,
           productConfigName: currentConfig.productConfigName || null,
@@ -225,6 +248,13 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
           gridSizeId: currentConfig.gridSizeId || null,
           gridSizeName: currentConfig.gridSizeName || null,
           noGrid: currentConfig.noGrid || false,
+          // Seeded from the operation code when the designer was never opened.
+          design:
+            currentConfig.design ??
+            designFromOperationType(currentConfig.operationType, {
+              name: currentConfig.productConfigName,
+              category: currentConfig.category,
+            }),
           calculatedPrice: calculatePrice(),
         }
 
@@ -253,7 +283,11 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
         }
       },
 
-      clearCart: () => set({ cart: [] }),
+      // Only this customer's items: another job's cart must survive a save here.
+      clearCart: () =>
+        set((state) => ({
+          cart: state.cart.filter((item) => item.customerId !== state.customerId),
+        })),
 
       resetConfig: () =>
         set({
@@ -281,5 +315,6 @@ export const STEPS: { key: WizardStep; label: string; description: string }[] = 
   { key: 'color', label: 'Color', description: 'Frame color' },
   { key: 'glass', label: 'Glass', description: 'Glass type' },
   { key: 'grids', label: 'Grids', description: 'Grid pattern' },
+  { key: 'design', label: 'Design', description: 'Frame layout' },
   { key: 'review', label: 'Review', description: 'Summary' },
 ]

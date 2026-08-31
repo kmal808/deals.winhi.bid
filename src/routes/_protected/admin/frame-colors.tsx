@@ -19,13 +19,13 @@ import { listFrameColors, createFrameColor, updateFrameColor, deleteFrameColor }
 interface FrameColor {
   id: number
   name: string
-  hexColor: string
+  hexColor: string | null
   factor: string
 }
 
 export const Route = createFileRoute('/_protected/admin/frame-colors')({
   loader: async () => {
-    const frameColors = await (listFrameColors as any)()
+    const frameColors = await listFrameColors()
     return { frameColors }
   },
   component: FrameColorsPage,
@@ -44,9 +44,9 @@ const columns = [
       <div className="flex items-center gap-2">
         <div
           className="w-6 h-6 rounded border border-gray-300"
-          style={{ backgroundColor: info.getValue() }}
+          style={{ backgroundColor: info.getValue() ?? 'transparent' }}
         />
-        <span className="text-gray-600 font-mono text-sm">{info.getValue()}</span>
+        <span className="text-gray-600 font-mono text-sm">{info.getValue() ?? '—'}</span>
       </div>
     ),
   }),
@@ -80,7 +80,7 @@ function FrameColorsPage() {
     if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return
 
     try {
-      await (deleteFrameColor as any)({ data: { id: item.id } })
+      await deleteFrameColor({ data: { id: item.id } })
       window.location.reload()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
@@ -101,9 +101,9 @@ function FrameColorsPage() {
 
     try {
       if (editingItem) {
-        await (updateFrameColor as any)({ data: { id: editingItem.id, ...data } })
+        await updateFrameColor({ data: { id: editingItem.id, ...data } })
       } else {
-        await (createFrameColor as any)({ data })
+        await createFrameColor({ data })
       }
       setIsDialogOpen(false)
       window.location.reload()

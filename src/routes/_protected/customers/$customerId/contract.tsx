@@ -7,6 +7,7 @@ import { ArrowLeft, Download, FileSignature } from 'lucide-react'
 import { ContractTemplate } from '@/components/pdf/contract-template'
 import { getCustomer } from '@/server/functions/customers'
 import { getSession } from '@/server/functions/auth'
+import { calculateOrderTotals, formatCurrency } from '@/lib/pricing'
 
 export const Route = createFileRoute('/_protected/customers/$customerId/contract')({
   loader: async ({ params }) => {
@@ -16,13 +17,7 @@ export const Route = createFileRoute('/_protected/customers/$customerId/contract
     }
 
     const customerId = parseInt(params.customerId, 10)
-    const customer = await (getCustomer as any)({
-      data: {
-        customerId,
-        representativeId: session.userId,
-        role: session.role,
-      },
-    })
+    const customer = await getCustomer({ data: { customerId } })
 
     return { customer, session }
   },
@@ -37,18 +32,11 @@ function ContractPage() {
   const contractDate = new Date().toLocaleDateString()
   const contractNumber = `WH-${customer.id.toString().padStart(5, '0')}`
 
-  // Calculate totals
-  const windowsTotal =
-    customer.windows?.reduce(
-      (sum: number, w: any) => sum + parseFloat(w.manualPrice || w.calculatedPrice || '0'),
-      0
-    ) || 0
-  const discountPercent = parseFloat(customer.discountPercent || '0')
-  const subtotal = windowsTotal * (1 - discountPercent / 100)
-  const total = subtotal * 1.04712
-  const downPayment = customer.downPaymentAmount
-    ? parseFloat(customer.downPaymentAmount)
-    : total * 0.5
+  const totals = calculateOrderTotals({
+    items: customer.windows,
+    discountPercent: customer.discountPercent,
+    downPaymentAmount: customer.downPaymentAmount,
+  })
 
   return (
     <div className="space-y-6">
@@ -140,16 +128,18 @@ function ContractPage() {
             </div>
             <div>
               <p className="text-gray-500">Total</p>
-              <p className="text-lg font-semibold">${total.toFixed(2)}</p>
+              <p className="text-lg font-semibold">{formatCurrency(totals.total)}</p>
             </div>
             <div>
               <p className="text-gray-500">Down Payment</p>
-              <p className="text-lg font-semibold text-green-600">${downPayment.toFixed(2)}</p>
+              <p className="text-lg font-semibold text-green-600">
+                {formatCurrency(totals.downPayment)}
+              </p>
             </div>
             <div>
               <p className="text-gray-500">Balance Due</p>
               <p className="text-lg font-semibold text-blue-600">
-                ${(total - downPayment).toFixed(2)}
+                {formatCurrency(totals.balanceDue)}
               </p>
             </div>
           </div>

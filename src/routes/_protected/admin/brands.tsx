@@ -20,11 +20,12 @@ interface Brand {
   id: number
   name: string
   factor: string
+  parFactor: string | null
 }
 
 export const Route = createFileRoute('/_protected/admin/brands')({
   loader: async () => {
-    const brands = await (listBrands as any)()
+    const brands = await listBrands()
     return { brands }
   },
   component: BrandsPage,
@@ -38,8 +39,23 @@ const columns = [
     cell: (info) => <span className="font-medium">{info.getValue()}</span>,
   }),
   columnHelper.accessor('factor', {
-    header: 'Price Factor',
+    header: 'Quoted Rate',
     cell: (info) => <span className="text-gray-600">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('parFactor', {
+    header: 'Par (floor)',
+    cell: (info) => {
+      const par = info.getValue()
+      if (!par) return <span className="text-gray-400">—</span>
+      const list = parseFloat(info.row.original.factor)
+      const room = list > 0 ? Math.max(0, (1 - parseFloat(par) / list) * 100) : 0
+      return (
+        <span className="text-gray-600">
+          {par}
+          <span className="ml-2 text-xs text-gray-400">max {room.toFixed(0)}% off</span>
+        </span>
+      )
+    },
   }),
 ]
 
@@ -67,7 +83,7 @@ function BrandsPage() {
     if (!confirm(`Are you sure you want to delete "${brand.name}"?`)) return
 
     try {
-      await (deleteBrand as any)({ data: { id: brand.id } })
+      await deleteBrand({ data: { id: brand.id } })
       window.location.reload()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
@@ -80,16 +96,18 @@ function BrandsPage() {
     setIsSubmitting(true)
 
     const formData = new FormData(e.currentTarget)
+    const parFactor = (formData.get('parFactor') as string)?.trim()
     const data = {
       name: formData.get('name') as string,
       factor: formData.get('factor') as string,
+      ...(parFactor ? { parFactor } : {}),
     }
 
     try {
       if (editingBrand) {
-        await (updateBrand as any)({ data: { id: editingBrand.id, ...data } })
+        await updateBrand({ data: { id: editingBrand.id, ...data } })
       } else {
-        await (createBrand as any)({ data })
+        await createBrand({ data })
       }
       setIsDialogOpen(false)
       window.location.reload()
@@ -115,7 +133,7 @@ function BrandsPage() {
 
       <DataTable
         title="All Brands"
-        description="Price factor multiplies the base price calculation"
+        description="Price factors are dollars per linear inch, summed across all options"
         data={brands || []}
         columns={columns}
         onAdd={handleAdd}
@@ -159,7 +177,25 @@ function BrandsPage() {
                   placeholder="1.0"
                 />
                 <p className="text-xs text-gray-500">
-                  Multiplier applied to base price. 1.0 = no change, 1.1 = 10% increase
+                  Dollars per united inch. Added to the frame, colour, glass and grid
+                  factors, then multiplied by (width + height).
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="parFactor">Par (floor rate)</Label>
+                <Input
+                  id="parFactor"
+                  name="parFactor"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={editingBrand?.parFactor || ''}
+                  placeholder="e.g. 16"
+                />
+                <p className="text-xs text-gray-500">
+                  The lowest rate this brand is sold at. Quotes are written above par and
+                  discounted back toward it, so this sets how much a rep can give away.
+                  Internal only — it never appears on an estimate or contract.
                 </p>
               </div>
             </DialogBody>

@@ -14,7 +14,6 @@ export const Route = createFileRoute('/_protected/customers/new')({
 
 function NewCustomerPage() {
   const navigate = useNavigate()
-  const { session } = Route.useRouteContext()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -37,13 +36,7 @@ function NewCustomerPage() {
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (createCustomer as any)({
-        data: {
-          data,
-          representativeId: session?.userId,
-        },
-      })
+      const result = await createCustomer({ data: { data } })
 
       toast.success('Customer created')
       // Navigate to the new customer's detail page

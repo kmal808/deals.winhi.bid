@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Check } from 'lucide-react'
 
@@ -34,6 +35,11 @@ export function OptionCard({
     lg: 'h-24 w-24',
   }
 
+  // Not every product config has artwork yet. A broken-image icon reads worse
+  // than no image at all, so drop the slot entirely once loading fails.
+  const [imageFailed, setImageFailed] = useState(false)
+  const showImage = Boolean(imageSrc) && !imageFailed
+
   return (
     <button
       type="button"
@@ -56,11 +62,12 @@ export function OptionCard({
       )}
 
       {/* Image or color swatch */}
-      {imageSrc ? (
+      {showImage ? (
         <div className={cn('mb-2 rounded bg-gray-100 flex items-center justify-center', imageSizes[size])}>
           <img
-            src={imageSrc}
+            src={imageSrc as string}
             alt={label}
+            onError={() => setImageFailed(true)}
             className="max-h-full max-w-full object-contain"
           />
         </div>

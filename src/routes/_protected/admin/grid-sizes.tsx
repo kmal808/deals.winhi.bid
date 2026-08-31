@@ -23,7 +23,7 @@ interface GridSize {
 
 export const Route = createFileRoute('/_protected/admin/grid-sizes')({
   loader: async () => {
-    const gridSizes = await (listGridSizes as any)()
+    const gridSizes = await listGridSizes()
     return { gridSizes }
   },
   component: GridSizesPage,
@@ -62,7 +62,7 @@ function GridSizesPage() {
     if (!confirm(`Are you sure you want to delete "${item.size}"?`)) return
 
     try {
-      await (deleteGridSize as any)({ data: { id: item.id } })
+      await deleteGridSize({ data: { id: item.id } })
       window.location.reload()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
@@ -81,9 +81,9 @@ function GridSizesPage() {
 
     try {
       if (editingItem) {
-        await (updateGridSize as any)({ data: { id: editingItem.id, ...data } })
+        await updateGridSize({ data: { id: editingItem.id, ...data } })
       } else {
-        await (createGridSize as any)({ data })
+        await createGridSize({ data })
       }
       setIsDialogOpen(false)
       window.location.reload()

@@ -8,8 +8,11 @@ import {
   boolean,
   timestamp,
   pgEnum,
+  jsonb,
+  unique,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+import type { UnitDesign } from '@/lib/window-design'
 
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['admin', 'representative'])
@@ -27,6 +30,18 @@ export const representatives = pgTable('representatives', {
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// Sessions
+// Persisted rather than held in process memory so a container restart does not
+// sign every representative out, and so multiple instances share login state.
+export const sessions = pgTable('sessions', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  representativeId: integer('representative_id')
+    .references(() => representatives.id, { onDelete: 'cascade' })
+    .notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
 })
 
 // Customers
@@ -52,6 +67,15 @@ export const customers = pgTable('customers', {
   estimateEndDate: varchar('estimate_end_date', { length: 50 }),
   noGrid: boolean('no_grid').default(false),
 
+  /**
+   * The rep's own terms for this job.
+   *
+   * The boilerplate in `contractDisclaimers` is admin-managed and reps do not
+   * edit it — a clause that protects the company should not be rewritable by
+   * whoever is closing today. Anything job-specific goes here instead.
+   */
+  customTerms: text('custom_terms'),
+
   // Signature (SVG data)
   signatureSvg: text('signature_svg'),
 
@@ -63,7 +87,19 @@ export const customers = pgTable('customers', {
 export const brands = pgTable('brands', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull().unique(),
+  /** The rate a unit is quoted at, before any discount. */
   factor: decimal('factor', { precision: 8, scale: 4 }).notNull(),
+  /**
+   * Par — the floor rate, below which a line is not sold.
+   *
+   * Quotes are written at roughly twice par and discounted back toward it, so
+   * the discount a rep can offer is bounded by (1 - par / factor). Null means
+   * no floor is recorded and no ceiling is enforced.
+   *
+   * Internal margin information: it belongs on the rep's screens and never on
+   * a customer's estimate or contract.
+   */
+  parFactor: decimal('par_factor', { precision: 8, scale: 4 }),
   active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').default(0),
 })
@@ -118,18 +154,24 @@ export const gridSizes = pgTable('grid_sizes', {
 })
 
 // Product Configurations (window/door types)
-export const productConfigs = pgTable('product_configs', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 100 }).notNull(),
-  category: productCategoryEnum('category').notNull(),
-  operationType: varchar('operation_type', { length: 50 }),
-  liteCount: integer('lite_count').default(1),
-  description: text('description'),
-  imagePath: varchar('image_path', { length: 255 }).notNull(),
-  svgTemplate: text('svg_template'),
-  active: boolean('active').notNull().default(true),
-  sortOrder: integer('sort_order').default(0),
-})
+export const productConfigs = pgTable(
+  'product_configs',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 100 }).notNull(),
+    category: productCategoryEnum('category').notNull(),
+    operationType: varchar('operation_type', { length: 50 }),
+    liteCount: integer('lite_count').default(1),
+    description: text('description'),
+    imagePath: varchar('image_path', { length: 255 }).notNull(),
+    svgTemplate: text('svg_template'),
+    active: boolean('active').notNull().default(true),
+    sortOrder: integer('sort_order').default(0),
+  },
+  // Same reason as disclaimers: without this, re-seeding duplicated every
+  // product configuration and the wizard listed each window type twice.
+  (table) => [unique('product_configs_name_category').on(table.name, table.category)]
+)
 
 // Windows (line items for a customer)
 export const windows = pgTable('windows', {
@@ -158,6 +200,11 @@ export const windows = pgTable('windows', {
   lowE: boolean('low_e').default(true),
   isDoor: boolean('is_door').default(false),
 
+  // Section tree from the frame designer (see lib/window-design.ts). Null means
+  // the unit predates the designer; callers fall back to the product config's
+  // operation type, so old rows still draw.
+  design: jsonb('design').$type<UnitDesign>(),
+
   // Pricing
   calculatedPrice: decimal('calculated_price', { precision: 10, scale: 2 }),
   manualPrice: decimal('manual_price', { precision: 10, scale: 2 }),
@@ -175,7 +222,10 @@ export const windows = pgTable('windows', {
 // Disclaimers (global templates)
 export const disclaimers = pgTable('disclaimers', {
   id: serial('id').primaryKey(),
-  description: text('description').notNull(),
+  // Unique so `db:seed` stays idempotent: onConflictDoNothing has nothing to
+  // conflict with unless a constraint exists, and re-seeding duplicated every
+  // term, which then printed twice on the contract.
+  description: text('description').notNull().unique(),
   sortOrder: integer('sort_order').default(0),
   includeByDefault: boolean('include_by_default').default(true),
   active: boolean('active').notNull().default(true),
@@ -191,6 +241,30 @@ export const contractDisclaimers = pgTable('contract_disclaimers', {
   sortOrder: integer('sort_order').default(0),
 })
 
+// Feedback from reps using the app
+//
+// Deliberately not a bug tracker. A rep in a driveway will not describe which
+// screen they were on or which job they had open, so the app records that
+// itself and asks them one question in plain language.
+export const feedback = pgTable('feedback', {
+  id: serial('id').primaryKey(),
+  representativeId: integer('representative_id').references(() => representatives.id),
+
+  /** What they typed. The only thing they have to fill in. */
+  message: text('message').notNull(),
+
+  // Captured automatically — the context that makes a report reproducible.
+  path: varchar('path', { length: 500 }),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+  userAgent: varchar('user_agent', { length: 500 }),
+  /** Build the app was running, from APP_VERSION. */
+  appVersion: varchar('app_version', { length: 100 }),
+
+  /** Cleared once it has been dealt with, so the list works like an inbox. */
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
 // Application Settings
 export const settings = pgTable('settings', {
   key: varchar('key', { length: 100 }).primaryKey(),
@@ -201,6 +275,26 @@ export const settings = pgTable('settings', {
 // Relations
 export const representativesRelations = relations(representatives, ({ many }) => ({
   customers: many(customers),
+  sessions: many(sessions),
+  feedback: many(feedback),
+}))
+
+export const feedbackRelations = relations(feedback, ({ one }) => ({
+  representative: one(representatives, {
+    fields: [feedback.representativeId],
+    references: [representatives.id],
+  }),
+  customer: one(customers, {
+    fields: [feedback.customerId],
+    references: [customers.id],
+  }),
+}))
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  representative: one(representatives, {
+    fields: [sessions.representativeId],
+    references: [representatives.id],
+  }),
 }))
 
 export const customersRelations = relations(customers, ({ one, many }) => ({

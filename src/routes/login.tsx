@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { getSession, performLogin } from '@/server/functions/auth'
@@ -11,7 +11,9 @@ export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
     const session = await getSession()
     if (session) {
-      throw { redirect: { to: '/customers' } }
+      // Must be the router's redirect(): a plain thrown object is not
+      // recognised as a redirect and surfaces in the error boundary instead.
+      throw redirect({ to: '/customers' })
     }
   },
   component: LoginPage,
@@ -30,8 +32,7 @@ function LoginPage() {
     setIsLoading(true)
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (performLogin as any)({ data: { username, password } })
+      await performLogin({ data: { username, password } })
       toast.success('Welcome back!')
       router.navigate({ to: '/customers' })
     } catch (err) {

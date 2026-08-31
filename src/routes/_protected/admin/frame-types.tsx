@@ -24,7 +24,7 @@ interface FrameType {
 
 export const Route = createFileRoute('/_protected/admin/frame-types')({
   loader: async () => {
-    const frameTypes = await (listFrameTypes as any)()
+    const frameTypes = await listFrameTypes()
     return { frameTypes }
   },
   component: FrameTypesPage,
@@ -67,7 +67,7 @@ function FrameTypesPage() {
     if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return
 
     try {
-      await (deleteFrameType as any)({ data: { id: item.id } })
+      await deleteFrameType({ data: { id: item.id } })
       window.location.reload()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
@@ -87,9 +87,9 @@ function FrameTypesPage() {
 
     try {
       if (editingItem) {
-        await (updateFrameType as any)({ data: { id: editingItem.id, ...data } })
+        await updateFrameType({ data: { id: editingItem.id, ...data } })
       } else {
-        await (createFrameType as any)({ data })
+        await createFrameType({ data })
       }
       setIsDialogOpen(false)
       window.location.reload()
@@ -115,7 +115,7 @@ function FrameTypesPage() {
 
       <DataTable
         title="All Frame Types"
-        description="Price factor multiplies the base price calculation"
+        description="Price factors are dollars per linear inch, summed across all options"
         data={frameTypes || []}
         columns={columns}
         onAdd={handleAdd}

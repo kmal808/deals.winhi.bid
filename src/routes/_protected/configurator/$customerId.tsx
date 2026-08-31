@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save } from 'lucide-react'
-import { useConfiguratorStore } from '@/stores/configurator-store'
+import { cartForCustomer, useConfiguratorStore } from '@/stores/configurator-store'
 import { WizardLayout } from '@/components/configurator/wizard-layout'
 import { ConfigSummary } from '@/components/configurator/config-summary'
 import {
@@ -15,6 +15,7 @@ import {
   ColorStep,
   GlassStep,
   GridsStep,
+  DesignStep,
   ReviewStep,
 } from '@/components/configurator/steps'
 import { loadPricingFactors, saveCartToWindows } from '@/server/functions/configurator'
@@ -31,14 +32,8 @@ export const Route = createFileRoute('/_protected/configurator/$customerId')({
     const customerId = parseInt(params.customerId, 10)
 
     const [pricingFactors, customer] = await Promise.all([
-      (loadPricingFactors as any)(),
-      (getCustomer as any)({
-        data: {
-          customerId,
-          representativeId: session.userId,
-          role: session.role,
-        },
-      }),
+      loadPricingFactors(),
+      getCustomer({ data: { customerId } }),
     ])
 
     return { pricingFactors, customer, session }
@@ -47,14 +42,20 @@ export const Route = createFileRoute('/_protected/configurator/$customerId')({
 })
 
 function ConfiguratorPage() {
-  const { pricingFactors, customer, session } = Route.useLoaderData()
+  const { pricingFactors, customer } = Route.useLoaderData()
   const navigate = useNavigate()
 
   const currentStep = useConfiguratorStore((s) => s.currentStep)
   const setCustomerId = useConfiguratorStore((s) => s.setCustomerId)
   const setPricingFactors = useConfiguratorStore((s) => s.setPricingFactors)
-  const cart = useConfiguratorStore((s) => s.cart)
+  const allCartItems = useConfiguratorStore((s) => s.cart)
   const clearCart = useConfiguratorStore((s) => s.clearCart)
+
+  // Never send another customer's configured units to this customer's job.
+  const cart = useMemo(
+    () => cartForCustomer(allCartItems, customer.id),
+    [allCartItems, customer.id]
+  )
 
   // Initialize store with customer ID and pricing factors
   useEffect(() => {
@@ -66,12 +67,24 @@ function ConfiguratorPage() {
     if (cart.length === 0) return
 
     try {
-      await (saveCartToWindows as any)({
+      await saveCartToWindows({
         data: {
           customerId: customer.id,
-          items: cart,
-          representativeId: session.userId,
-          role: session.role,
+          items: cart.map((item) => ({
+            location: item.location,
+            category: item.category,
+            width: item.width,
+            height: item.height,
+            brandId: item.brandId,
+            productConfigId: item.productConfigId,
+            frameTypeId: item.frameTypeId,
+            frameColorId: item.frameColorId,
+            glassTypeId: item.glassTypeId,
+            gridStyleId: item.gridStyleId,
+            gridSizeId: item.gridSizeId,
+            noGrid: item.noGrid,
+            design: item.design,
+          })),
         },
       })
       toast.success(`${cart.length} window${cart.length > 1 ? 's' : ''} saved`)
@@ -100,6 +113,8 @@ function ConfiguratorPage() {
         return <GlassStep />
       case 'grids':
         return <GridsStep />
+      case 'design':
+        return <DesignStep />
       case 'review':
         return <ReviewStep />
       default:

@@ -1,4 +1,15 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { BRAND } from '@/lib/brand'
+import { Letterhead } from './letterhead'
+import {
+  calculateOrderTotals,
+  formatCurrency,
+  lineItemPrice,
+  ratePerUnitedInch,
+  unitedInches,
+} from '@/lib/pricing'
+import { designFromOperationType, type UnitDesign } from '@/lib/window-design'
+import { WindowDrawing } from './window-drawing'
 
 const styles = StyleSheet.create({
   page: {
@@ -16,7 +27,7 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1e40af',
+    color: BRAND.orange,
   },
   companyInfo: {
     fontSize: 8,
@@ -28,14 +39,16 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   title: {
-    fontSize: 16,
+    fontSize: 10,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 15,
     textTransform: 'uppercase',
-    backgroundColor: '#1e40af',
-    color: '#fff',
-    padding: 8,
+    letterSpacing: 1.5,
+    color: BRAND.black,
+    borderBottomWidth: 2,
+    borderBottomColor: BRAND.orange,
+    paddingBottom: 3,
+    marginTop: 4,
+    marginBottom: 10,
   },
   twoColumn: {
     flexDirection: 'row',
@@ -50,7 +63,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e40af',
+    borderBottomColor: BRAND.orange,
     paddingBottom: 2,
   },
   row: {
@@ -71,7 +84,7 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#374151',
+    backgroundColor: BRAND.black,
     color: '#fff',
     padding: 5,
     fontSize: 8,
@@ -87,17 +100,40 @@ const styles = StyleSheet.create({
   tableRowAlt: {
     backgroundColor: '#f9fafb',
   },
-  col1: { width: '20%' },
-  col2: { width: '25%' },
-  col3: { width: '12%' },
-  col4: { width: '28%' },
+  // Spec matrix, matching the column set the shop already works from.
+  // Line item: united inches, drawing, description block, extended price.
+  liQty: { width: '8%' },
+  liQtyNum: { fontSize: 11, fontWeight: 'bold', color: BRAND.black },
+  liQtyLabel: { fontSize: 6, color: BRAND.muted },
+  liPic: { width: '20%', paddingRight: 8 },
+  liDesc: { width: '55%', paddingRight: 8 },
+  liExt: { width: '17%', textAlign: 'right' },
+  liTitle: { fontSize: 10, fontWeight: 'bold', color: BRAND.black, marginBottom: 2 },
+  liRate: { fontSize: 8, color: BRAND.orange, marginBottom: 3 },
+  liSpec: { fontSize: 8, color: BRAND.ink, marginBottom: 1 },
+  liMeta: { fontSize: 8, color: BRAND.muted },
+  liNote: { fontSize: 8, color: BRAND.orangeDark, marginTop: 2 },
+  liExtValue: { fontSize: 11, fontWeight: 'bold', color: BRAND.black },
+  liRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 0.5,
+    borderBottomColor: BRAND.hairline,
+    paddingVertical: 8,
+  },
+  colTotalLabel: { width: '85%', textAlign: 'right' },
   col5: { width: '15%', textAlign: 'right' },
+  viewNote: {
+    fontSize: 7,
+    color: BRAND.orange,
+    marginTop: 4,
+    marginBottom: 2,
+  },
   totalsBox: {
     marginTop: 15,
     marginLeft: 'auto',
     width: 220,
     borderWidth: 1,
-    borderColor: '#1e40af',
+    borderColor: BRAND.orange,
     padding: 10,
   },
   totalRow: {
@@ -110,7 +146,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: '#1e40af',
+    borderTopColor: BRAND.orange,
   },
   grandTotalLabel: {
     fontSize: 11,
@@ -123,7 +159,7 @@ const styles = StyleSheet.create({
   paymentSection: {
     marginTop: 15,
     padding: 10,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: BRAND.tint,
   },
   paymentTitle: {
     fontSize: 10,
@@ -214,18 +250,27 @@ interface Window {
   height: string
   calculatedPrice: string | null
   manualPrice: string | null
+  // Read by calculateOrderTotals: doors and flagged lines are discounted
+  // at their own rate rather than the customer's.
+  isDoor?: boolean | null
+  applyCustomDiscount?: boolean | null
+  customDiscountPercent?: string | null
+  lowE?: boolean | null
+  specialInstructions?: string | null
+  design?: UnitDesign | null
   brand?: { name: string } | null
-  productConfig?: { name: string } | null
+  productConfig?: { name: string; operationType?: string | null; category?: string | null } | null
   frameType?: { name: string } | null
-  frameColor?: { name: string } | null
+  frameColor?: { name: string; hexColor?: string | null } | null
   glassType?: { name: string } | null
   gridStyle?: { name: string } | null
+  gridSize?: { size: string } | null
 }
 
 interface Disclaimer {
   id: number
   description: string
-  sortOrder: number
+  sortOrder: number | null
 }
 
 interface Customer {
@@ -240,6 +285,7 @@ interface Customer {
   email: string | null
   discountPercent: string | null
   downPaymentAmount: string | null
+  customTerms: string | null
   signatureSvg: string | null
   windows: Window[]
   contractDisclaimers: Disclaimer[]
@@ -251,46 +297,44 @@ interface ContractTemplateProps {
   contractDate?: string
 }
 
+/** Product names often already end in their configuration code. */
+function productTitle(name?: string | null, code?: string | null): string {
+  const base = name?.trim() || 'Window'
+  const c = code?.trim()
+  if (!c) return base
+  return new RegExp(`\\b${c}\\b`, 'i').test(base) ? base : `${base} ${c}`
+}
+
 export function ContractTemplate({ customer, contractDate }: ContractTemplateProps) {
   const today = contractDate || new Date().toLocaleDateString()
   const contractNumber = `WH-${customer.id.toString().padStart(5, '0')}`
 
-  const windowsTotal = customer.windows.reduce((sum, w) => {
-    return sum + parseFloat(w.manualPrice || w.calculatedPrice || '0')
-  }, 0)
-
-  const discountPercent = parseFloat(customer.discountPercent || '0')
-  const discountAmount = windowsTotal * (discountPercent / 100)
-  const subtotal = windowsTotal - discountAmount
-  const taxAmount = subtotal * 0.04712
-  const total = subtotal + taxAmount
-  const downPayment = customer.downPaymentAmount
-    ? parseFloat(customer.downPaymentAmount)
-    : total * 0.5
-  const balance = total - downPayment
+  const {
+    itemsTotal: windowsTotal,
+    discountPercent,
+    discountAmount,
+    subtotal,
+    taxAmount,
+    total,
+    downPayment,
+    balanceDue: balance,
+  } = calculateOrderTotals({
+    items: customer.windows,
+    discountPercent: customer.discountPercent,
+    downPaymentAmount: customer.downPaymentAmount,
+  })
 
   return (
     <Document>
       <Page size="LETTER" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.companySection}>
-            <Text style={styles.companyName}>Windows Hawaii</Text>
-            <Text style={styles.companyInfo}>
-              123 Aloha Street, Honolulu, HI 96801
-            </Text>
-            <Text style={styles.companyInfo}>
-              (808) 555-1234 | info@windowshawaii.com
-            </Text>
-            <Text style={styles.companyInfo}>License #ABC123456</Text>
-          </View>
-          <View>
-            <Text style={styles.contractNumber}>Contract #: {contractNumber}</Text>
-            <Text style={styles.contractNumber}>Date: {today}</Text>
-          </View>
-        </View>
+        <Letterhead
+          meta={[
+            { label: 'Contract #', value: contractNumber },
+            { label: 'Date', value: today },
+          ]}
+        />
 
-        <Text style={styles.title}>Installation Contract</Text>
+        <Text style={styles.title}>Purchase Agreement</Text>
 
         {/* Customer & Job Info */}
         <View style={styles.twoColumn}>
@@ -346,93 +390,141 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
           </View>
         </View>
 
-        {/* Windows Table */}
-        <Text style={styles.sectionTitle}>Products & Services</Text>
+        {/* Specification matrix */}
+        <Text style={styles.sectionTitle}>Specification</Text>
+        <Text style={styles.viewNote}>All configurations viewed from the outside, left to right. X = sash that moves, O = sash that is stationary.</Text>
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.col1}>Location</Text>
-            <Text style={styles.col2}>Product</Text>
-            <Text style={styles.col3}>Size</Text>
-            <Text style={styles.col4}>Specifications</Text>
-            <Text style={styles.col5}>Price</Text>
+            <Text style={styles.liQty}>Qty</Text>
+            <Text style={styles.liPic}>Drawing</Text>
+            <Text style={styles.liDesc}>Description</Text>
+            <Text style={styles.liExt}>Ext</Text>
           </View>
-          {customer.windows.map((window, index) => (
-            <View
-              key={window.id}
-              style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
-            >
-              <Text style={styles.col1}>{window.location}</Text>
-              <Text style={styles.col2}>
-                {window.productConfig?.name || '—'}
-                {window.brand && `\n${window.brand.name}`}
-              </Text>
-              <Text style={styles.col3}>{window.width}" × {window.height}"</Text>
-              <Text style={styles.col4}>
-                {[
-                  window.frameType?.name,
-                  window.frameColor?.name,
-                  window.glassType?.name,
-                  window.gridStyle?.name !== 'None' ? window.gridStyle?.name : null,
-                ]
-                  .filter(Boolean)
-                  .join(', ') || '—'}
-              </Text>
-              <Text style={styles.col5}>
-                ${parseFloat(window.manualPrice || window.calculatedPrice || '0').toFixed(2)}
-              </Text>
-            </View>
-          ))}
+          {customer.windows.map((window) => {
+            const w = parseFloat(window.width) || 0
+            const h = parseFloat(window.height) || 0
+            const ui = unitedInches(w, h)
+            const rate = ratePerUnitedInch(window, w, h)
+
+            const glassName = window.glassType?.name ?? ''
+            const spec = [
+              window.frameType?.name,
+              glassName || null,
+              // The glass itself is often already a Low-E product; do not say so twice.
+              window.lowE && !/low[- ]?e/i.test(glassName) ? 'Low-E' : null,
+              window.gridStyle && window.gridStyle.name !== 'None'
+                ? [window.gridStyle.name, window.gridSize?.size, 'grid'].filter(Boolean).join(' ')
+                : null,
+            ]
+              .filter(Boolean)
+              .join(', ')
+
+            return (
+              <View key={window.id} style={styles.liRow} wrap={false}>
+                {/* United inches is the quantity every price here is per. */}
+                <View style={styles.liQty}>
+                  <Text style={styles.liQtyNum}>{ui || '—'}</Text>
+                  <Text style={styles.liQtyLabel}>united in.</Text>
+                </View>
+
+                <View style={styles.liPic}>
+                  <WindowDrawing
+                    design={
+                      window.design ??
+                      designFromOperationType(window.productConfig?.operationType, {
+                        name: window.productConfig?.name,
+                        category: window.productConfig?.category,
+                      })
+                    }
+                    width={w || 36}
+                    height={h || 48}
+                    frameColor={window.frameColor?.hexColor}
+                    boxWidth={96}
+                    boxHeight={80}
+                  />
+                </View>
+
+                <View style={styles.liDesc}>
+                  <Text style={styles.liTitle}>
+                    {productTitle(window.productConfig?.name, window.productConfig?.operationType)}
+                  </Text>
+                  {rate > 0 && (
+                    <Text style={styles.liRate}>
+                      ${rate.toFixed(2)} per united inch × {ui}
+                      {window.manualPrice ? ' (agreed price)' : ''}
+                    </Text>
+                  )}
+                  {spec ? <Text style={styles.liSpec}>{spec}</Text> : null}
+                  <Text style={styles.liMeta}>{window.brand?.name || ''}</Text>
+                  <Text style={styles.liMeta}>{window.location}</Text>
+                  <Text style={styles.liMeta}>
+                    {window.width}" × {window.height}"
+                    {window.frameColor?.name ? ` · ${window.frameColor.name}` : ''}
+                  </Text>
+                  {window.specialInstructions ? (
+                    <Text style={styles.liNote}>{window.specialInstructions}</Text>
+                  ) : null}
+                </View>
+
+                <View style={styles.liExt}>
+                  <Text style={styles.liExtValue}>
+                    {formatCurrency(lineItemPrice(window))}
+                  </Text>
+                </View>
+              </View>
+            )
+          })}
         </View>
 
         {/* Totals */}
-        <View style={styles.totalsBox}>
+        <View style={styles.totalsBox} wrap={false}>
           <View style={styles.totalRow}>
             <Text>Products & Services:</Text>
-            <Text>${windowsTotal.toFixed(2)}</Text>
+            <Text>{formatCurrency(windowsTotal)}</Text>
           </View>
           {discountPercent > 0 && (
             <View style={styles.totalRow}>
               <Text>Discount ({discountPercent}%):</Text>
-              <Text>-${discountAmount.toFixed(2)}</Text>
+              <Text>-{formatCurrency(discountAmount)}</Text>
             </View>
           )}
           <View style={styles.totalRow}>
             <Text>Subtotal:</Text>
-            <Text>${subtotal.toFixed(2)}</Text>
+            <Text>{formatCurrency(subtotal)}</Text>
           </View>
           <View style={styles.totalRow}>
             <Text>Hawaii GET (4.712%):</Text>
-            <Text>${taxAmount.toFixed(2)}</Text>
+            <Text>{formatCurrency(taxAmount)}</Text>
           </View>
           <View style={[styles.totalRow, styles.grandTotal]}>
             <Text style={styles.grandTotalLabel}>CONTRACT TOTAL:</Text>
-            <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+            <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
           </View>
         </View>
 
         {/* Payment Terms */}
-        <View style={styles.paymentSection}>
+        <View style={styles.paymentSection} wrap={false}>
           <Text style={styles.paymentTitle}>Payment Terms</Text>
           <View style={styles.paymentRow}>
             <Text>Down Payment (due upon signing):</Text>
-            <Text>${downPayment.toFixed(2)}</Text>
+            <Text>{formatCurrency(downPayment)}</Text>
           </View>
           <View style={styles.paymentRow}>
             <Text>Balance (due upon completion):</Text>
-            <Text>${balance.toFixed(2)}</Text>
+            <Text>{formatCurrency(balance)}</Text>
           </View>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>Page 1 of 2</Text>
+          <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
       </Page>
 
       {/* Page 2 - Terms & Signature */}
       <Page size="LETTER" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.companyName}>Windows Hawaii</Text>
+          <Text style={styles.companyName}>{BRAND.company.name}</Text>
           <Text style={styles.contractNumber}>Contract #: {contractNumber}</Text>
         </View>
 
@@ -447,13 +539,24 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
               </Text>
             </View>
           ))}
+
+          {/* The rep's own terms for this job, numbered on from the boilerplate
+              so the customer reads one continuous list. */}
+          {customer.customTerms ? (
+            <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+              <Text style={{ fontSize: 8, marginRight: 6 }}>
+                {customer.contractDisclaimers.length + 1}.
+              </Text>
+              <Text style={[styles.disclaimer, { paddingLeft: 0 }]}>{customer.customTerms}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Agreement Text */}
         <View style={{ marginTop: 20, padding: 10, backgroundColor: '#f3f4f6' }}>
           <Text style={{ fontSize: 9, lineHeight: 1.4 }}>
             By signing below, Customer agrees to the terms and conditions stated herein and
-            authorizes Windows Hawaii to perform the work described above. Customer acknowledges
+            authorizes {BRAND.company.name} to perform the work described above. Customer acknowledges
             receipt of a copy of this contract and agrees to pay the total amount specified
             according to the payment terms outlined.
           </Text>
@@ -479,7 +582,7 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
           <View style={styles.signatureBox}>
             <Text style={styles.signatureLabel}>Company Representative:</Text>
             <View style={styles.signatureLine} />
-            <Text style={{ fontSize: 9 }}>{customer.representative?.name || 'Windows Hawaii'}</Text>
+            <Text style={{ fontSize: 9 }}>{customer.representative?.name || BRAND.company.name}</Text>
             <View style={styles.dateLine}>
               <Text style={styles.dateLabel}>Date:</Text>
               <Text style={styles.dateValue}>{today}</Text>
@@ -490,13 +593,16 @@ export function ContractTemplate({ customer, contractDate }: ContractTemplatePro
         {/* Footer */}
         <View style={styles.footer}>
           <Text>
-            Windows Hawaii | 123 Aloha Street, Honolulu, HI 96801 | License #ABC123456
+            {BRAND.company.name} | {BRAND.company.address} | Lic# {BRAND.company.license}
           </Text>
           <Text style={{ marginTop: 4 }}>
-            Thank you for choosing Windows Hawaii!
+            Thank you for choosing {BRAND.company.name}!
           </Text>
         </View>
-        <Text style={styles.pageNumber}>Page 2 of 2</Text>
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+        />
       </Page>
     </Document>
   )

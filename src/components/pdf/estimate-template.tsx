@@ -1,4 +1,9 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { BRAND } from '@/lib/brand'
+import { Letterhead } from './letterhead'
+import { calculateOrderTotals, formatCurrency, lineItemPrice } from '@/lib/pricing'
+import { designFromOperationType, type UnitDesign } from '@/lib/window-design'
+import { WindowDrawing } from './window-drawing'
 
 const styles = StyleSheet.create({
   page: {
@@ -12,7 +17,7 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1e40af',
+    color: BRAND.orange,
   },
   companyInfo: {
     fontSize: 9,
@@ -23,8 +28,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginVertical: 20,
+    marginVertical: 16,
     textTransform: 'uppercase',
+    letterSpacing: 2,
+    color: BRAND.black,
   },
   section: {
     marginBottom: 15,
@@ -33,8 +40,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 8,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: BRAND.tint,
+    color: BRAND.black,
     padding: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: BRAND.orange,
   },
   row: {
     flexDirection: 'row',
@@ -52,7 +62,7 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#1e40af',
+    backgroundColor: BRAND.black,
     color: '#fff',
     padding: 6,
     fontWeight: 'bold',
@@ -66,10 +76,11 @@ const styles = StyleSheet.create({
   tableRowAlt: {
     backgroundColor: '#f9fafb',
   },
-  col1: { width: '25%' },
-  col2: { width: '25%' },
-  col3: { width: '15%' },
-  col4: { width: '20%' },
+  col0: { width: '12%' },
+  col1: { width: '20%' },
+  col2: { width: '21%' },
+  col3: { width: '13%' },
+  col4: { width: '19%' },
   col5: { width: '15%', textAlign: 'right' },
   totalsSection: {
     marginTop: 20,
@@ -91,7 +102,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 2,
-    borderTopColor: '#1e40af',
+    borderTopColor: BRAND.orange,
   },
   grandTotalLabel: {
     fontSize: 14,
@@ -100,7 +111,7 @@ const styles = StyleSheet.create({
   grandTotalValue: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1e40af',
+    color: BRAND.orange,
   },
   footer: {
     position: 'absolute',
@@ -117,7 +128,7 @@ const styles = StyleSheet.create({
   validityNote: {
     marginTop: 20,
     padding: 10,
-    backgroundColor: '#fef3c7',
+    backgroundColor: BRAND.tint,
     fontSize: 9,
   },
 })
@@ -129,9 +140,15 @@ interface Window {
   height: string
   calculatedPrice: string | null
   manualPrice: string | null
+  // Read by calculateOrderTotals: doors and flagged lines are discounted
+  // at their own rate rather than the customer's.
+  isDoor?: boolean | null
+  applyCustomDiscount?: boolean | null
+  customDiscountPercent?: string | null
+  design?: UnitDesign | null
   brand?: { name: string } | null
-  productConfig?: { name: string } | null
-  frameColor?: { name: string } | null
+  productConfig?: { name: string; operationType?: string | null; category?: string | null } | null
+  frameColor?: { name: string; hexColor?: string | null } | null
   glassType?: { name: string } | null
 }
 
@@ -159,26 +176,22 @@ export function EstimateTemplate({ customer, estimateDate, validUntil }: Estimat
   const today = estimateDate || new Date().toLocaleDateString()
   const validity = validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()
 
-  const windowsTotal = customer.windows.reduce((sum, w) => {
-    return sum + parseFloat(w.manualPrice || w.calculatedPrice || '0')
-  }, 0)
-
-  const discountPercent = parseFloat(customer.discountPercent || '0')
-  const discountAmount = windowsTotal * (discountPercent / 100)
-  const subtotal = windowsTotal - discountAmount
-  const taxAmount = subtotal * 0.04712
-  const total = subtotal + taxAmount
+  const {
+    itemsTotal: windowsTotal,
+    discountPercent,
+    discountAmount,
+    subtotal,
+    taxAmount,
+    total,
+  } = calculateOrderTotals({
+    items: customer.windows,
+    discountPercent: customer.discountPercent,
+  })
 
   return (
     <Document>
       <Page size="LETTER" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.companyName}>Windows Hawaii</Text>
-          <Text style={styles.companyInfo}>
-            123 Aloha Street, Honolulu, HI 96801 | (808) 555-1234 | info@windowshawaii.com
-          </Text>
-        </View>
+        <Letterhead meta={[{ label: 'Date', value: today }]} />
 
         <Text style={styles.title}>Estimate</Text>
 
@@ -222,6 +235,7 @@ export function EstimateTemplate({ customer, estimateDate, validUntil }: Estimat
           <Text style={styles.sectionTitle}>Windows & Doors</Text>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
+              <Text style={styles.col0}>Drawing</Text>
               <Text style={styles.col1}>Location</Text>
               <Text style={styles.col2}>Product</Text>
               <Text style={styles.col3}>Size</Text>
@@ -233,6 +247,22 @@ export function EstimateTemplate({ customer, estimateDate, validUntil }: Estimat
                 key={window.id}
                 style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
               >
+                <View style={styles.col0}>
+                  <WindowDrawing
+                    design={
+                      window.design ??
+                      designFromOperationType(window.productConfig?.operationType, {
+                        name: window.productConfig?.name,
+                        category: window.productConfig?.category,
+                      })
+                    }
+                    width={parseFloat(window.width) || 36}
+                    height={parseFloat(window.height) || 48}
+                    frameColor={window.frameColor?.hexColor}
+                    boxWidth={52}
+                    boxHeight={52}
+                  />
+                </View>
                 <Text style={styles.col1}>{window.location}</Text>
                 <Text style={styles.col2}>
                   {window.productConfig?.name || '—'}
@@ -243,7 +273,7 @@ export function EstimateTemplate({ customer, estimateDate, validUntil }: Estimat
                   {[window.frameColor?.name, window.glassType?.name].filter(Boolean).join(', ') || '—'}
                 </Text>
                 <Text style={styles.col5}>
-                  ${parseFloat(window.manualPrice || window.calculatedPrice || '0').toFixed(2)}
+                  {formatCurrency(lineItemPrice(window))}
                 </Text>
               </View>
             ))}
@@ -254,25 +284,25 @@ export function EstimateTemplate({ customer, estimateDate, validUntil }: Estimat
         <View style={styles.totalsSection}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal:</Text>
-            <Text style={styles.totalValue}>${windowsTotal.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(windowsTotal)}</Text>
           </View>
           {discountPercent > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Discount ({discountPercent}%):</Text>
-              <Text style={styles.totalValue}>-${discountAmount.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>-{formatCurrency(discountAmount)}</Text>
             </View>
           )}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>After Discount:</Text>
-            <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Tax (4.712%):</Text>
-            <Text style={styles.totalValue}>${taxAmount.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(taxAmount)}</Text>
           </View>
           <View style={[styles.totalRow, styles.grandTotal]}>
             <Text style={styles.grandTotalLabel}>Total:</Text>
-            <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+            <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
           </View>
         </View>
 
@@ -287,7 +317,8 @@ export function EstimateTemplate({ customer, estimateDate, validUntil }: Estimat
         {/* Footer */}
         <View style={styles.footer}>
           <Text>
-            Windows Hawaii | License #ABC123456 | This is an estimate only, not a contract.
+            {BRAND.company.name} | Lic# {BRAND.company.license} | This is an estimate only, not a
+            contract.
           </Text>
         </View>
       </Page>
