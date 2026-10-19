@@ -28,7 +28,7 @@
     "@tanstack/react-router": "^1.157.16",
     "@tanstack/react-router-devtools": "^1.157.16",
     "@tanstack/react-router-ssr-query": "^1.157.16",
-    "@tanstack/react-start": "^1.157.16",
+    "@tanstack/react-start": "^1.168.60",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/router-plugin": "^1.157.16",
     "bcryptjs": "^3.0.3",
